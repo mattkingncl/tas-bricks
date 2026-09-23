@@ -1,0 +1,620 @@
+<meta charset="utf-8">
+<title>Tasmania in Bricks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#DDE2E1; --ground2:#C9D0CE; --panel:rgba(248,249,247,.92); --ink:#1D2426; --ink2:#55605F;
+  --line:rgba(29,36,38,.14); --accent:#B8892B; --accent-ink:#1D2426; --chip:#ECEFEC; --focus:#1F6F8B;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif; --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --ground:#171C1E; --ground2:#0F1314; --panel:rgba(24,30,32,.92); --ink:#E6EAE8; --ink2:#9BA6A4;
+  --line:rgba(230,234,232,.14); --accent:#D6A849; --accent-ink:#171C1E; --chip:#232A2C; --focus:#6FC0DA; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --ground:#171C1E; --ground2:#0F1314; --panel:rgba(24,30,32,.92); --ink:#E6EAE8; --ink2:#9BA6A4;
+  --line:rgba(230,234,232,.14); --accent:#D6A849; --accent-ink:#171C1E; --chip:#232A2C; --focus:#6FC0DA; color-scheme:dark;}
+html,body{height:100%}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);overflow:hidden}
+#stage{position:fixed;inset:0;background:radial-gradient(120% 90% at 50% 20%,var(--ground) 0%,var(--ground2) 100%)}
+#stage canvas{display:block;width:100%;height:100%;touch-action:none}
+.head{position:fixed;left:16px;top:calc(14px + env(safe-area-inset-top,0px));pointer-events:none;max-width:min(520px,calc(100% - 32px))}
+.head h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4.2vw,44px);letter-spacing:.01em;line-height:.95;margin:0;text-transform:uppercase;text-wrap:balance}
+.head p{margin:6px 0 0;font-size:13px;color:var(--ink2);line-height:1.45}
+.head .scale{font-family:var(--mono);font-size:11.5px;color:var(--ink2);margin-top:6px;letter-spacing:.02em}
+.panel{position:fixed;right:16px;top:calc(16px + env(safe-area-inset-top,0px));width:292px;max-height:calc(100% - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow:auto;background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:10px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:14px;box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.grp{display:flex;flex-direction:column;gap:6px}
+.lbl{font-family:var(--display);font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:13px;color:var(--ink2);display:flex;justify-content:space-between;align-items:baseline}
+.lbl span{font-family:var(--mono);text-transform:none;letter-spacing:0;font-size:11.5px;font-weight:400}
+.seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));background:var(--chip);border-radius:7px;padding:3px;gap:3px}
+.seg button{all:unset;cursor:pointer;text-align:center;padding:6px 4px;border-radius:5px;font-size:12.5px;font-weight:500;color:var(--ink2)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg button:focus-visible,.tog:focus-visible,.btn:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.tog{all:unset;cursor:pointer;display:flex;align-items:center;gap:7px;font-size:13px;padding:5px 9px 5px 6px;border-radius:6px;background:var(--chip)}
+.tog i{width:14px;height:14px;border-radius:3px;border:1.5px solid var(--ink2);display:inline-block;position:relative}
+.tog[aria-pressed="true"] i{background:var(--accent);border-color:var(--accent)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;font-size:12px;color:var(--ink2)}
+.stats b{display:block;font-family:var(--mono);font-weight:500;font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
+.btn{all:unset;cursor:pointer;text-align:center;padding:8px 10px;border-radius:7px;border:1px solid var(--line);font-size:13px;font-weight:500}
+.btn.primary{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.note{font-size:11.5px;line-height:1.45;color:var(--ink2)}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12px}
+.legend div{display:flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:2px;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+#labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.lm{position:absolute;transform:translate(-50%,-100%);white-space:nowrap;text-align:center}
+.lm .t{font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 8px rgba(0,0,0,.5);line-height:1}
+.lm .e{font-family:var(--mono);font-size:10.5px;color:#f1f1f1;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.lm .stem{width:1px;height:18px;background:rgba(255,255,255,.85);margin:3px auto 0;box-shadow:0 0 2px rgba(0,0,0,.6)}
+.lm.water .t{color:#D8F1FF}
+.compass{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:46px;height:46px;border-radius:50%;background:var(--panel);border:1px solid var(--line);display:grid;place-items:center}
+.compass svg{width:34px;height:34px}
+.hint{position:fixed;left:72px;bottom:calc(26px + env(safe-area-inset-bottom,0px));font-size:11.5px;color:var(--ink2)}
+#busy{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--display);text-transform:uppercase;letter-spacing:.1em;font-size:15px;color:var(--ink2)}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--ground);color:var(--ink);padding:0;width:min(760px,calc(100% - 32px));max-height:calc(100% - 48px)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.dlg{display:flex;flex-direction:column;max-height:calc(100vh - 60px)}
+.dlg header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.dlg header h2{font-family:var(--display);text-transform:uppercase;letter-spacing:.04em;margin:0;font-size:22px}
+.tbl{overflow:auto;padding:0 16px 16px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{font-family:var(--display);text-transform:uppercase;letter-spacing:.06em;font-size:12.5px;color:var(--ink2);position:sticky;top:0;background:var(--ground)}
+td.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.id{font-family:var(--mono);color:var(--ink2)}
+.panel .toggle{display:none}
+@media (max-width:720px){
+  .head h1{font-size:26px}.head p{display:none}
+  .panel{left:16px;right:16px;top:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px));width:auto;max-height:52%}
+  .panel.collapsed>*:not(.toggle){display:none}
+  .panel .toggle{display:block}
+  .compass{bottom:auto;top:calc(90px + env(safe-area-inset-top,0px))}
+  .hint{display:none}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+<style>
+[hidden]{display:none!important}
+.scenes{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.scenes button{all:unset;cursor:pointer;padding:6px 8px;border-radius:6px;background:var(--chip);font-size:12px;line-height:1.25}
+.scenes button small{display:block;color:var(--ink2);font-size:10.5px}
+.scenes button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.scenes button[aria-pressed="true"] small{color:var(--accent-ink);opacity:.8}
+.scenes button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.slr{border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.slr .marks{display:flex;flex-wrap:wrap;gap:4px}
+.slr .marks button{all:unset;cursor:pointer;font-size:11px;padding:2px 6px;border-radius:4px;background:var(--chip);font-family:var(--mono)}
+.slr .marks button:focus-visible{outline:2px solid var(--focus)}
+.slr .readout{font-family:var(--mono);font-size:11.5px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.slr .warn{font-size:11px;color:#B2541C}
+.head .sub{font-family:var(--display);font-weight:500;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-top:2px}
+</style>
+
+<div id="stage"></div>
+<div id="labels"></div>
+<div id="busy">Sorting bricks…</div>
+
+<div class="head">
+  <h1 id="title">Cradle Mountain &amp; Dove Lake</h1>
+  <div class="sub" id="region">Tasmania in bricks</div>
+  <p id="blurb">Real terrain from the LIST Tasmania 25&nbsp;m DEM, built from true-dimension bricks.</p>
+  <div class="scale" id="scaleLine"></div>
+</div>
+
+<div class="compass" aria-label="North arrow"><svg viewBox="-20 -20 40 40" id="needle"><polygon points="0,-15 5,3 0,0 -5,3" fill="#C0392B"/><polygon points="0,15 5,3 0,0 -5,3" fill="currentColor" opacity=".45"/></svg></div>
+<div class="hint">Drag to orbit · scroll or pinch to zoom · right-drag to pan</div>
+
+<aside class="panel" id="panel">
+  <button class="btn toggle" id="collapse" aria-expanded="true">Hide controls</button>
+  <div class="grp">
+    <div class="lbl">Scene <span id="sceneNote"></span></div>
+    <div class="scenes" id="scenes"></div>
+  </div>
+  <div class="grp">
+    <div class="lbl">View</div>
+    <div class="seg" id="views">
+      <button data-v="hero" aria-pressed="true" id="heroBtn">Hero</button>
+      <button data-v="oblique" aria-pressed="false">Oblique</button>
+      <button data-v="plan" aria-pressed="false">Plan</button>
+    </div>
+  </div>
+  <div class="grp">
+    <div class="lbl">Resolution <span id="resNote"></span></div>
+    <div class="seg" id="res"></div>
+  </div>
+  <div class="grp">
+    <div class="lbl">Vertical scale <span id="veNote"></span></div>
+    <div class="seg" id="ve">
+      <button data-ve="1" aria-pressed="false">1× true</button>
+      <button data-ve="2" aria-pressed="true">2×</button>
+      <button data-ve="3" aria-pressed="false">3×</button>
+      <button data-ve="5" aria-pressed="false">5×</button>
+    </div>
+  </div>
+  <div class="slr" id="slrBox">
+    <div class="lbl">Sea-level rise <span id="slrOut">+0 m</span></div>
+    <input type="range" id="slr" min="0" max="100" value="0" step="1" aria-label="Sea-level rise">
+    <div class="marks" id="slrMarks"></div>
+    <div class="readout" id="slrArea"></div>
+    <div class="warn" id="slrWarn"></div>
+  </div>
+  <div class="row">
+    <button class="tog" id="snow" aria-pressed="true"><i></i>Spring snow</button>
+    <button class="tog" id="labelsT" aria-pressed="true"><i></i>Labels</button>
+    <button class="tog" id="trees" aria-pressed="true"><i></i>Canopy</button>
+  </div>
+  <div class="grp">
+    <div class="lbl">Build step <span id="stepOut">complete</span></div>
+    <input type="range" id="step" min="0" max="40" value="40" aria-label="Build step (plate layer)">
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="grp">
+    <div class="lbl">Colour key</div>
+    <div class="legend" id="legend"></div>
+  </div>
+  <button class="btn primary" id="partsBtn">Parts list</button>
+  <p class="note">Elevation: LIST Tasmania 25&nbsp;m DEM (Land Tasmania, CC BY 3.0 AU; TIN of 1:25k 10&nbsp;m contours, spot heights and water bodies; 90% within 5&nbsp;m), exactly area-averaged to the chosen stud size. Blocks holding a LIST spot height take the surveyed value. Lakes: LIST Hydrographic Areas at full-supply level; a block is water when ≥50% covered. Sea = cells outside the DEM (heights are AHD, ≈ mean sea level). Grid is MGA zone 55. Labels from LIST Named Features and spot heights. Urban areas: LIST Landuse Live (ALUM 5.3–5.9 intensive uses excl. rural residential and recreation), shown as flat tiles where a block is ≥50% urban. Other surface colours are a slope/elevation classification, not mapped vegetation.</p>
+  <p class="note" id="slrNote">Sea-level rise is a static, uniform (“bathtub”) rise with hydraulic connectivity to the sea, computed on the metre heights before brick quantisation. It ignores ocean-dynamic and gravitational fingerprints, vertical land motion/GIA, tides and surge. The DEM interpolates between the 1&nbsp;m coastline and the first 10&nbsp;m contour, so rises of a few metres are not reliably resolved; use LiDAR for planning.</p>
+</aside>
+
+<dialog id="dlg">
+  <div class="dlg">
+    <header><h2>Parts list</h2><div class="row"><button class="btn" id="copyCsv">Copy CSV</button><button class="btn primary" id="closeDlg">Close</button></div></header>
+    <div class="tbl"><p class="note" id="bomNote"></p><table><thead><tr><th>Part</th><th>Design ID</th><th>Colour</th><th style="text-align:right">Qty</th></tr></thead><tbody id="bom"></tbody></table></div>
+  </div>
+</dialog>
+
+<script type="application/json" id="data">{}</script>
+<script type="importmap">{"imports":{"three":"./lib/three/build/three.module.js","three/addons/":"./lib/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ================= SCENES ================= */
+// hero: camera azimuth FROM target (deg, clockwise from grid north), elevation angle, distance × model size; target optional [E,N]
+const SCENES = [
+ {id:'cradle', name:'Cradle Mountain & Dove Lake', region:'Cradle Mountain–Lake St Clair NP', hero:{label:'Boatshed', az:8, el:24, d:1.55, target:'Cradle Mountain'}, extra:'boatshed',
+  blurb:'Dolerite towers above a glacial lake, seen from the Dove Lake boatshed.'},
+ {id:'hobart', name:'Hobart & kunanyi', region:'nipaluna / Hobart', hero:{label:'From the Derwent', az:60, el:26, d:1.6, target:'kunanyi / Mt Wellington', lead:0.08},
+  blurb:'kunanyi / Mt Wellington (1271 m) rises straight out of the Derwent estuary behind the city.'},
+ {id:'gorge', ve:3, name:'Cataract Gorge', region:'Launceston', hero:{label:'From the city', az:50, el:32, d:1.6, target:'Cataract Gorge', lead:0.08},
+  blurb:'The South Esk cuts a dolerite gorge into the heart of Launceston before joining kanamaluka / Tamar.'},
+ {id:'freycinet', ve:3, name:'Wineglass Bay & the Hazards', region:'Freycinet Peninsula', hero:{label:'From Great Oyster Bay', az:265, el:26, d:1.6, target:'Mount Freycinet', lead:0.08},
+  blurb:'Pink granite domes and the perfect curve of Wineglass Bay.'},
+ {id:'tasman', ve:3, name:'Cape Pillar & Tasman Island', region:'Tasman Peninsula', hero:{label:'From the Tasman Sea', az:150, el:22, d:1.6, target:'Cape Pillar', lead:0.08},
+  blurb:'The highest sea cliffs in the Southern Hemisphere, dolerite columns falling 300 m to the ocean.'},
+ {id:'stclair', name:'Lake St Clair & Mt Olympus', region:'Cradle Mountain–Lake St Clair NP', hero:{label:'From Cynthia Bay', az:170, el:24, d:1.6, target:'Mount Olympus', lead:0.08},
+  blurb:'Australia’s deepest lake, gouged by glaciers beneath Mt Olympus and Mt Ida.'},
+ {id:'ossa', name:'Mt Ossa & the Pelions', region:'Overland Track', hero:{label:'From Pelion Plains', az:305, el:26, d:1.6, target:'Mount Ossa', lead:0.08},
+  blurb:'Tasmania’s highest summit (1617 m) among the dolerite giants of the Overland Track.'},
+ {id:'frenchmans', name:'Frenchmans Cap', region:'Franklin–Gordon Wild Rivers NP', hero:{label:'From the north', az:340, el:24, d:1.6, target:'Frenchmans Cap', lead:0.08},
+  blurb:'A white quartzite cap and sheer eastern face above Lake Tahune.'},
+ {id:'federation', name:'Federation Peak', region:'Eastern Arthur Range', hero:{label:'From the south-west', az:215, el:24, d:1.6, target:'Federation Peak', lead:0.08},
+  blurb:'The most remote, hardest-won summit in Australia’s south-west wilderness.'},
+ {id:'nut', ve:5, name:'The Nut, Stanley', region:'Circular Head', hero:{label:'From Bass Strait', az:100, el:22, d:1.1, target:'The Nut', lead:0.03, mix:0.2},
+  blurb:'A 143 m basalt volcanic plug tethered to the coast by a narrow isthmus.'},
+];
+
+/* ================= ENGINE (pure data: terrain -> bricks) ================= */
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const PITCH = 8, PLATE = 3.2, STUD_H = 1.7, GAP = 0.1;   // LEGO system dimensions (mm)
+const BASE = 1;                                            // one plate under the lowest point
+const SEA = 250;
+const SHELL_N = 40000;                                     // above this many studs, build the visible shell only
+let SC, R, FX, FY, E0, N1, DEMF, LAKEF, URBF, LEV, SPOTS;        // scene + native (finest) grid
+let NX, NY, N, CELL, H_M, LAKE, URB, Z0, SLOPE, SURF, FOREST, COAST, NZ1, NZ2, NZ3, NZ4, NZ5, FLOOD;
+
+const COL = [
+ {k:'black',    n:'Black',             hex:0x1B2A34},
+ {k:'dbg',      n:'Dark Bluish Gray',  hex:0x6C6E68},
+ {k:'lbg',      n:'Light Bluish Gray', hex:0xA0A5A9},
+ {k:'white',    n:'White',             hex:0xF4F4F4},
+ {k:'dkgreen',  n:'Dark Green',        hex:0x184632},
+ {k:'green',    n:'Green',             hex:0x237841},
+ {k:'olive',    n:'Olive Green',       hex:0x9B9A5A},
+ {k:'sandgreen',n:'Sand Green',        hex:0xA0BCAC},
+ {k:'tan',      n:'Tan',               hex:0xE4CD9E},
+ {k:'dktan',    n:'Dark Tan',          hex:0x958A73},
+ {k:'rbrown',   n:'Reddish Brown',     hex:0x582A12},
+ {k:'dkbrown',  n:'Dark Brown',        hex:0x352100},
+ {k:'dkblue',   n:'Dark Blue',         hex:0x0A3463},
+ {k:'tdblue',   n:'Trans-Dark Blue',   hex:0x0020A0},
+];
+const C = Object.fromEntries(COL.map((c,i)=>[c.k,i]));
+const WATER = C.tdblue;
+const SAND = C.tan;
+
+async function inflate(b64){ const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+  return new Uint8Array(await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()); }
+async function loadScene(id){
+  if(!DATA[id]){ const r=await fetch(`data/${id}.json`,{cache:'no-cache'}); if(!r.ok) throw new Error(`data/${id}.json: HTTP ${r.status}`); DATA[id]=await r.json(); }
+  const d=DATA[id]; SC=SCENES.find(s=>s.id===id); R=d.r; FX=d.nx; FY=d.ny; E0=d.E0; N1=d.N1; SPOTS=d.spots;
+  LEV={}; for(const k in d.lev) LEV[+k]=d.lev[k]; LEV[SEA]=0;
+  const raw=await inflate(d.z); const del=new Int16Array(raw.buffer.slice(0,FX*FY*2)); LAKEF=raw.slice(FX*FY*2,FX*FY*3);
+  DEMF=new Float32Array(FX*FY);
+  for(let y=0;y<FY;y++)for(let x=0;x<FX;x++){const i=y*FX+x; DEMF[i]= x? DEMF[i-1]+del[i] : (y? DEMF[i-FX]+del[i] : del[i]);}
+  URBF = raw.length>=FX*FY*4 ? raw.slice(FX*FY*3,FX*FY*4) : (d.u ? await inflate(d.u) : new Uint8Array(FX*FY));
+  SC.data=d;
+}
+
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function field(seed, passes){
+  const r = rng(seed); let a = Float32Array.from({length:N}, r), b = new Float32Array(N);
+  for(let p=0;p<passes;p++){ for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){let s=0,n=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const yy=y+dy,xx=x+dx;if(yy>=0&&yy<NY&&xx>=0&&xx<NX){s+=a[yy*NX+xx];n++;}}b[y*NX+x]=s/n;} [a,b]=[b,a]; }
+  const idx = Array.from(a.keys()).sort((i,j)=>a[i]-a[j]); const out = new Float32Array(N); idx.forEach((i,k)=>out[i]=k/(N-1)); return out;
+}
+
+// Resample the native grid to the chosen stud size (exact block means), then classify the surface.
+function setRes(res){
+  const f = res/R; CELL = res; NX = FX/f; NY = FY/f; N = NX*NY;
+  H_M = new Float32Array(N); LAKE = new Uint8Array(N); URB = new Uint8Array(N);
+  const best = new Map();
+  for(let r=0;r<NY;r++)for(let c=0;c<NX;c++){
+    let s=0,ns=0,u1=0,u2=0; const cnt={};
+    for(let a=0;a<f;a++)for(let b=0;b<f;b++){const j=(r*f+a)*FX+c*f+b; const k=LAKEF[j]; if(k) cnt[k]=(cnt[k]||0)+1; if(k!==SEA){s+=DEMF[j];ns++;} if(URBF[j]===1)u1++; else if(URBF[j]===2)u2++;}
+    const i=r*NX+c; H_M[i]= ns? s/ns : 0; if((u1+u2)*2>=f*f) URB[i]= u1>=u2?1:2;
+    let bk=0,bn=0; for(const k in cnt) if(cnt[k]>bn){bn=cnt[k];bk=+k;}
+    if(bn*2>=f*f) LAKE[i]=bk;
+    for(const k in cnt){ if(+k===SEA||+k===99) continue; const e=best.get(+k); if(!e||cnt[k]>e.n) best.set(+k,{i,n:cnt[k]}); }
+  }
+  for(const [k,e] of best) if(!LAKE.includes(k) && e.n*4>=f*f && !LAKE[e.i]) LAKE[e.i]=k;
+  for(const [e,n,z] of SPOTS){ const c=Math.floor((e-E0)/res), r=Math.floor((N1-n)/res); if(c>=0&&c<NX&&r>=0&&r<NY){const i=r*NX+c; if(!LAKE[i]) H_M[i]=Math.max(H_M[i],z);} }
+  const seen=new Uint8Array(N);
+  for(let i0=0;i0<N;i0++){ if(!LAKE[i0]||seen[i0]) continue; const k=LAKE[i0], comp=[i0]; seen[i0]=1;
+    for(let q=0;q<comp.length;q++){const i=comp[q],x=i%NX,y=(i/NX)|0; for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const xx=x+dx,yy=y+dy; if(xx<0||yy<0||xx>=NX||yy>=NY) continue; const j=yy*NX+xx; if(!seen[j]&&LAKE[j]===k){seen[j]=1;comp.push(j);}}}
+    const lev = (LEV[k]>0||k===SEA) ? LEV[k] : comp.reduce((m,i)=>H_M[i]<m?H_M[i]:m,Infinity);
+    for(const i of comp) H_M[i]=lev; }
+  Z0 = H_M.reduce((m,v)=>v<m?v:m,Infinity);
+  const sc = 100/res * ((SC.data.r0||R)>=50 ? 0.5 : 1);
+  NZ1 = field(11,Math.max(1,Math.round(2*sc))); NZ2 = field(23,Math.max(1,Math.round(3*sc))); NZ3 = field(37,Math.max(1,Math.round(4*sc))); NZ4 = field(41,Math.max(1,Math.round(2*sc))); NZ5 = field(53,1);
+  SLOPE = new Float32Array(N);
+  for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
+    const g=(xx,yy)=>H_M[Math.min(NY-1,Math.max(0,yy))*NX+Math.min(NX-1,Math.max(0,xx))];
+    const dzdx=(g(x+1,y)-g(x-1,y))/(2*CELL), dzdy=(g(x,y+1)-g(x,y-1))/(2*CELL);
+    SLOPE[y*NX+x]=Math.atan(Math.hypot(dzdx,dzdy))*180/Math.PI;
+  }
+  COAST = new Uint8Array(N);
+  for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=y*NX+x; if(LAKE[i]) continue;
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const xx=x+dx,yy=y+dy; if(xx>=0&&yy>=0&&xx<NX&&yy<NY&&LAKE[yy*NX+xx]===SEA){COAST[i]=1;break;}}}
+  SURF = new Int8Array(N); FOREST = new Uint8Array(N);
+  for(let i=0;i<N;i++){
+    const e=H_M[i], s=SLOPE[i], a=NZ1[i], b=NZ2[i];
+    let c;
+    if(LAKE[i]) c=WATER;
+    else if(URB[i]) c = URB[i]===1 ? C.lbg : C.dbg;                                   // LIST Landuse Live: urban residential / commercial, industrial, transport
+    else if(COAST[i] && e<8 && s<8) c = SAND;                                          // beaches and dunes
+    else if(s>=38 || (e>=1400 && s>=22)) c = a<0.72?C.dbg:C.lbg;                      // dolerite columns / cliffs
+    else if(s>=26 && e>=1150) c = a<0.6?C.lbg:C.dbg;                                   // talus & scree
+    else if(e>=1150) c = b<0.42?C.olive:b<0.68?C.sandgreen:b<0.86?C.dktan:C.dbg;       // alpine heath & cushion plants
+    else if(s<7) c = b<0.45?C.tan:b<0.8?C.dktan:C.olive;                              // buttongrass / grassland
+    else { c = b<0.58?C.dkgreen:b<0.84?C.green:C.olive; if(c!==C.olive) FOREST[i]=1; } // forest & scrub
+    SURF[i]=c;
+  }
+}
+
+// static, connected ("bathtub") inundation on metre heights: cells <= slr connected to the sea through cells <= slr
+function floodMask(slr, Hm, Lk, nx, ny){
+  const n=nx*ny, F=new Uint8Array(n); if(!(slr>0)) return F; const q=[];
+  for(let i=0;i<n;i++) if(Lk[i]===SEA){F[i]=1;q.push(i);}
+  for(let h=0;h<q.length;h++){const i=q[h],x=i%nx,y=(i/nx)|0;
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const xx=x+dx,yy=y+dy; if(xx<0||yy<0||xx>=nx||yy>=ny) continue; const j=yy*nx+xx;
+      if(!F[j] && (Lk[j]? (Lk[j]===SEA || (LEV[Lk[j]]>0 ? LEV[Lk[j]] : Hm[j]) <= slr) : Hm[j] <= slr)){F[j]=1;q.push(j);} }}
+  for(let i=0;i<n;i++) if(Lk[i]===SEA) F[i]=0; // report only newly flooded land/lakes
+  return F; }
+
+// parts catalogue (LEGO design IDs)
+const SIZES = [[2,8],[2,6],[2,4],[1,8],[1,6],[2,3],[1,4],[2,2],[1,3],[1,2],[1,1]];
+const IDS = {
+ B:{'1x1':'3005','1x2':'3004','1x3':'3622','1x4':'3010','1x6':'3009','1x8':'3008','2x2':'3003','2x3':'3002','2x4':'3001','2x6':'2456','2x8':'3007'},
+ P:{'1x1':'3024','1x2':'3023','1x3':'3623','1x4':'3710','1x6':'3666','1x8':'3460','2x2':'3022','2x3':'3021','2x4':'3020','2x6':'3795','2x8':'3034'},
+ T:{'1x1':'3070b','1x2':'3069b','1x3':'63864','1x4':'2431','1x6':'6636','1x8':'4162','2x2':'3068b','2x3':'26603','2x4':'87079','2x6':'69729'},
+};
+const KIND = {B:{h:3,name:'Brick'},P:{h:1,name:'Plate'},T:{h:1,name:'Tile'}};
+
+function build(ve, snow, slr){
+  const mPerPlate = 0.4*CELL/ve;                 // true scale: 3.2 mm plate × (CELL m / 8 mm stud) = 0.4·CELL m
+  const q = m => BASE + Math.max(0, Math.round((m - Z0)/mPerPlate));
+  FLOOD = floodMask(slr, H_M, LAKE, NX, NY);
+  const WET = new Uint8Array(N); for(let i=0;i<N;i++) WET[i] = LAKE[i]||FLOOD[i] ? 1:0;
+  const H = new Int16Array(N);
+  for(let i=0;i<N;i++){
+    if(LAKE[i]===SEA) H[i]=q(Math.max(0,slr));
+    else if(FLOOD[i]) H[i]=q(slr);                  // water surface level with the (raised) sea
+    else H[i]=q(H_M[i]); }
+  for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=y*NX+x; if(WET[i]) continue;
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const xx=x+dx,yy=y+dy; if(xx<0||yy<0||xx>=NX||yy>=NY) continue; const j=yy*NX+xx; if(WET[j]&&H[i]<H[j]) H[i]=H[j];}}
+  let maxH=0; for(let i=0;i<N;i++) if(H[i]>maxH) maxH=H[i];
+  const VIS = new Int16Array(N);
+  for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=y*NX+x;
+    if(x===0||y===0||x===NX-1||y===NY-1){VIS[i]=0;continue;}
+    VIS[i]=Math.min(H[i]-1,H[i-1],H[i+1],H[i-NX],H[i+NX]);}
+  const snowTop = new Uint8Array(N);
+  if(snow) for(let i=0;i<N;i++) if(!WET[i] && H_M[i] >= 1215 + 70*NZ3[i] && SLOPE[i] < 44) snowTop[i]=1;
+  const substrate = (i,z) => { const e = Z0 + (z-BASE+0.5)*mPerPlate, v = (NZ4[i]*2.3 + Math.floor(z/3)*0.618)%1;
+    return e>=1120 ? (v<0.78?C.dbg:C.lbg) : (v<0.68?C.rbrown:C.dkbrown); };
+  const colourAt = (i,z) => {
+    if(WET[i]){ if(z===H[i]-1) return WATER; if(z===H[i]-2) return FLOOD[i]&&SURF[i]!==WATER ? SURF[i] : C.dkblue; return z<BASE?C.black:substrate(i,z); }
+    const top = FOREST[i]?3:2;
+    if(z<BASE && z<H[i]-top) return C.black;
+    if(z>=H[i]-top) return (z===H[i]-1 && snowTop[i]) ? C.white : SURF[i];
+    return substrate(i,z);
+  };
+  // Build layer by layer (memory O(N)). Large grids build only the visible shell; the hidden infill is estimated.
+  const SHELL = N > SHELL_N;
+  const layers = new Map(); let hiddenPlates = 0;
+  const push = (z,k,i,c) => { const key=z*3+(k==='B'?0:k==='P'?1:2); let L=layers.get(key); if(!L){ L={z,k,cells:[],cols:[]}; layers.set(key,L); } L.cells.push(i); L.cols.push(c); };
+  for(let i=0;i<N;i++){ const h=H[i]; let z=0; const ut = URB[i] && !WET[i];
+    if(SHELL){ const v=Math.max(0,VIS[i]); z=v-(v%3); hiddenPlates+=z; }
+    while(z<h){ const c=colourAt(i,z);
+      if(z%3===0 && z+2<=h-1 && c!==WATER && !(ut && z+2===h-1) && colourAt(i,z+1)===c && colourAt(i,z+2)===c){ push(z,'B',i,c); z+=3; }
+      else { push(z, (c===WATER || (ut && z===h-1))?'T':'P', i, c); z+=1; } } }
+  const parts=[], buf=new Int8Array(N).fill(-1), used=new Uint8Array(N);
+  for(const key of [...layers.keys()].sort((p,q)=>p-q)){
+    const {z,k,cells,cols}=layers.get(key), hz=KIND[k].h;
+    for(let n=0;n<cells.length;n++) buf[cells[n]]=cols[n];
+    const flip = (Math.floor(z/(k==='B'?3:1)) % 2)===1;
+    const list=[]; for(const [a,b] of SIZES){ if(k==='T'&&a===2&&b===8) continue; list.push(flip?[b,a]:[a,b]); if(a!==b) list.push(flip?[a,b]:[b,a]); }
+    for(let n=0;n<cells.length;n++){ const i=cells[n]; if(used[i]) continue; const c=buf[i], x=i%NX, y=(i/NX)|0;
+      for(const [w,d] of list){ if(x+w>NX||y+d>NY) continue; let ok=true;
+        for(let yy=y;yy<y+d&&ok;yy++)for(let xx=x;xx<x+w;xx++){const j=yy*NX+xx; if(buf[j]!==c||used[j]){ok=false;break;}}
+        if(!ok) continue;
+        let vis=false; for(let yy=y;yy<y+d;yy++)for(let xx=x;xx<x+w;xx++){const j=yy*NX+xx; used[j]=1; if(z+hz-1>=VIS[j]) vis=true;}
+        parts.push({k,w,d,x,y,z,c,vis}); break; } }
+    for(const i of cells){ buf[i]=-1; used[i]=0; }
+  }
+  const studsTop=[], studsCut=[];
+  for(const p of parts){ if(p.k==='T') continue; const t=p.z+KIND[p.k].h;
+    for(let yy=p.y;yy<p.y+p.d;yy++)for(let xx=p.x;xx<p.x+p.w;xx++){const j=yy*NX+xx;
+      if(t===H[j]) studsTop.push({x:xx,y:yy,t,c:p.c}); else if(!SHELL) studsCut.push({x:xx,y:yy,t,c:p.c});}}
+  const canopy=[]; for(let i=0;i<N;i++) if(FOREST[i] && !WET[i] && !snowTop[i] && NZ5[i]>0.5) canopy.push({x:i%NX,y:(i/NX)|0,t:H[i],c:(NZ5[i]>0.8?C.green:C.dkgreen)});
+  return {H,maxH,parts,studsTop,studsCut,canopy,mPerPlate,SHELL,hiddenEst:Math.round(hiddenPlates/24)};
+}
+
+/* ================= RENDERER ================= */
+const stage=document.getElementById('stage');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const pmrem=new THREE.PMREMGenerator(renderer); scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+const camera=new THREE.PerspectiveCamera(32,1,5,40000);
+const controls=new OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.maxPolarAngle=Math.PI*0.49; controls.minDistance=60; controls.maxDistance=2200;
+scene.add(new THREE.HemisphereLight(0xdfe9f2,0x3a3326,0.55));
+const sun=new THREE.DirectionalLight(0xfff1dc,2.4);          // southern hemisphere: sun from the north
+sun.position.set(-260,900,-700); sun.castShadow=true; sun.shadow.mapSize.set(4096,4096);
+Object.assign(sun.shadow.camera,{left:-340,right:340,top:340,bottom:-340,near:10,far:2600}); sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.6;
+scene.add(sun); scene.add(sun.target);
+const table=new THREE.Mesh(new THREE.CylinderGeometry(1,1,6,96),new THREE.MeshStandardMaterial({color:0x8d8a84,roughness:0.9}));
+table.receiveShadow=true; scene.add(table);
+let W, Dp, CX, CZ, KS=1;
+const SUN0=sun.position.clone();
+function layout(){ W=NX*PITCH; Dp=NY*PITCH; CX=W/2; CZ=Dp/2; const S0=Math.max(W,Dp); KS=S0/384;
+  sun.position.copy(SUN0).multiplyScalar(Math.max(1,KS)).add(new THREE.Vector3(CX,0,CZ)); sun.target.position.set(CX,0,CZ);
+  const hs=0.9*S0; Object.assign(sun.shadow.camera,{left:-hs,right:hs,top:hs,bottom:-hs,far:2600*Math.max(1,KS)}); sun.shadow.camera.updateProjectionMatrix();
+  table.scale.set(0.72*Math.hypot(W,Dp),1,0.72*Math.hypot(W,Dp)); table.position.set(CX,-3.05,CZ); controls.maxDistance=2600*KS; }
+
+const plastic=new THREE.MeshStandardMaterial({roughness:0.3,metalness:0,envMapIntensity:0.6});
+const waterMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.28,metalness:0,transparent:true,opacity:0.9,envMapIntensity:0.12,depthWrite:false});
+const geoCache={};
+function partGeo(k,a,b){ const key=k+a+'x'+b; if(geoCache[key]) return geoCache[key];
+  const h=KIND[k].h*PLATE; const g=new RoundedBoxGeometry(a*PITCH-2*GAP,h-0.04,b*PITCH-2*GAP,2,0.32); g.translate(0,h/2,0); return geoCache[key]=g; }
+const studGeo=(()=>{const pts=[[0,0],[2.4,0],[2.4,1.45],[2.36,1.62],[2.25,1.7],[0,1.7]].map(p=>new THREE.Vector2(p[0],p[1])); return new THREE.LatheGeometry(pts,20);})();
+const roundPlateGeo=(()=>{const pts=[[0,0],[3.6,0],[3.9,0.3],[3.9,3.1],[3.8,3.2],[2.4,3.2],[2.4,4.65],[2.3,4.9],[0,4.9]].map(p=>new THREE.Vector2(p[0],p[1])); return new THREE.LatheGeometry(pts,20);})();
+const studGeoLo=(()=>{const pts=[[0,0],[2.4,0],[2.4,1.7],[0,1.7]].map(p=>new THREE.Vector2(p[0],p[1])); return new THREE.LatheGeometry(pts,8);})();
+const roundPlateGeoLo=(()=>{const pts=[[0,0],[3.9,0],[3.9,3.2],[2.4,3.2],[2.4,4.9],[0,4.9]].map(p=>new THREE.Vector2(p[0],p[1])); return new THREE.LatheGeometry(pts,8);})();
+const unitBox=new THREE.BoxGeometry(1,1,1); unitBox.translate(0,0.5,0);
+
+let model=null, S=null, stepMax=0;
+const tmpM=new THREE.Matrix4(), tmpC=new THREE.Color(), q90=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI/2), q0=new THREE.Quaternion(), one=new THREE.Vector3(1,1,1), v=new THREE.Vector3();
+function colour(ci){ return tmpC.setHex(COL[ci].hex); }
+function inst(geo,mat,items,place){
+  const m=new THREE.InstancedMesh(geo,mat,Math.max(1,items.length)); m.count=items.length; m.castShadow=true; m.receiveShadow=true;
+  items.forEach((it,i)=>{place(it,tmpM); m.setMatrixAt(i,tmpM); m.setColorAt(i,colour(it.c));});
+  m.instanceMatrix.needsUpdate=true; if(m.instanceColor) m.instanceColor.needsUpdate=true; m.userData.z=items.map(it=>it.z??it.t); return m; }
+function placePart(p,M){ const rot=p.w>p.d; v.set((p.x+p.w/2)*PITCH, p.z*PLATE, (p.y+p.d/2)*PITCH); return M.compose(v,rot?q90:q0,one); }
+function upperBound(arr,val){let lo=0,hi=arr.length;while(lo<hi){const m=(lo+hi)>>1; if(arr[m]<=val) lo=m+1; else hi=m;}return lo;}
+const lakeId = name => { const i=(SC.data.lakes||[]).findIndex(n=>n.toUpperCase()===name.toUpperCase()); return i<0?-1:i+1; };
+
+function rebuild(){
+  if(model){ scene.remove(model); model.traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); }
+  S=build(state.ve,state.snow,state.slr);
+  model=new THREE.Group(); scene.add(model);
+  const groups={}, hidden=[];
+  for(const p of S.parts){ if(!p.vis){hidden.push(p);continue;} const key=p.k+Math.min(p.w,p.d)+'x'+Math.max(p.w,p.d)+(p.c===WATER?'w':''); (groups[key]||(groups[key]=[])).push(p); }
+  S.meshes=[];
+  for(const [key,items] of Object.entries(groups)){ items.sort((a,b)=>a.z-b.z); const p0=items[0];
+    const wet=p0.c===WATER; const m=inst(partGeo(p0.k,Math.min(p0.w,p0.d),Math.max(p0.w,p0.d)), wet?waterMat:plastic, items, placePart);
+    if(wet){m.castShadow=false; m.renderOrder=2;} model.add(m); S.meshes.push(m); }
+  hidden.sort((a,b)=>a.z-b.z);
+  S.interior=inst(unitBox,plastic,hidden,(p,M)=>M.compose(v.set((p.x+p.w/2)*PITCH,p.z*PLATE,(p.y+p.d/2)*PITCH),q0,new THREE.Vector3(p.w*PITCH-2*GAP,KIND[p.k].h*PLATE-0.04,p.d*PITCH-2*GAP)));
+  S.interior.count=0; model.add(S.interior);
+  S.studsTop.sort((a,b)=>a.t-b.t);
+  S.studMesh=inst(S.SHELL?studGeoLo:studGeo,plastic,S.studsTop,(s,M)=>M.makeTranslation((s.x+.5)*PITCH,s.t*PLATE,(s.y+.5)*PITCH)); S.studMesh.userData.z=S.studsTop.map(s=>s.t-1); model.add(S.studMesh);
+  S.cutMesh=new THREE.InstancedMesh(studGeo,plastic,Math.max(1,NX*NY)); S.cutMesh.count=0; S.cutMesh.castShadow=true; model.add(S.cutMesh);
+  S.byT={}; for(const s of S.studsCut)(S.byT[s.t]||(S.byT[s.t]=[])).push(s);
+  S.canopy.sort((a,b)=>a.t-b.t);
+  S.canopyMesh=inst(S.SHELL?roundPlateGeoLo:roundPlateGeo,plastic,S.canopy,(s,M)=>M.makeTranslation((s.x+.5)*PITCH,s.t*PLATE,(s.y+.5)*PITCH)); S.canopyMesh.userData.z=S.canopy.map(s=>s.t); S.canopyMesh.visible=state.trees; model.add(S.canopyMesh);
+  S.shed=[]; S.shedH=0;
+  S.extraParts=[{k:'Plate, Round 1x1',id:'4073',c:C.dkgreen,n:S.canopy.filter(s=>s.c===C.dkgreen).length},{k:'Plate, Round 1x1',id:'4073',c:C.green,n:S.canopy.filter(s=>s.c===C.green).length}];
+  if(SC.extra==='boatshed'){ const bs=boatshedCell(); if(bs){ const bsH=S.H[bs.y*NX+bs.x];
+    const shed=new THREE.Mesh(partGeo('P',1,1),new THREE.MeshStandardMaterial({color:COL[C.rbrown].hex,roughness:.32})); shed.position.set((bs.x+.5)*PITCH,bsH*PLATE,(bs.y+.5)*PITCH);
+    const roofShape=new THREE.Shape([new THREE.Vector2(-3.9,0),new THREE.Vector2(3.9,0),new THREE.Vector2(0,3.6)]);
+    const roof=new THREE.Mesh(new THREE.ExtrudeGeometry(roofShape,{depth:7.8,bevelEnabled:false}),new THREE.MeshStandardMaterial({color:COL[C.dbg].hex,roughness:.32}));
+    roof.position.set((bs.x+.5)*PITCH,(bsH+1)*PLATE,(bs.y+.5)*PITCH-3.9); shed.castShadow=roof.castShadow=true; model.add(shed,roof); S.shed=[shed,roof]; S.shedH=bsH;
+    S.extraParts.push({k:'Plate 1x1 (boatshed)',id:'3024',c:C.rbrown,n:1},{k:'Slope 30 1x1x2/3 (roof)',id:'54200',c:C.dbg,n:1}); } }
+  stepMax=S.maxH-1; const st=document.getElementById('step'); st.max=stepMax; st.value=stepMax; applyStep(stepMax);
+  updateStats(); placeLabels();
+}
+function boatshedCell(){ const k=lakeId('Dove Lake'); if(k<0) return null;
+  const y=Math.floor((N1-5388300)/CELL); for(let x=Math.floor((412150-E0)/CELL);x<NX;x++){const i=y*NX+x; if(LAKE[i]===k) return {x:x-1,y};} return null; }
+
+function applyStep(k){
+  const full = k>=stepMax;
+  for(const m of S.meshes){ m.count=upperBound(m.userData.z,k); }
+  S.studMesh.count=upperBound(S.studMesh.userData.z,k);
+  S.canopyMesh.count= full? S.canopy.length : 0;
+  S.interior.count= full? 0 : upperBound(S.interior.userData.z,k);
+  const cut = full? [] : (S.byT[k+1]||[]);
+  cut.forEach((s,i)=>{tmpM.makeTranslation((s.x+.5)*PITCH,s.t*PLATE,(s.y+.5)*PITCH); S.cutMesh.setMatrixAt(i,tmpM); S.cutMesh.setColorAt(i,colour(s.c));});
+  S.cutMesh.count=cut.length; S.cutMesh.instanceMatrix.needsUpdate=true; if(S.cutMesh.instanceColor) S.cutMesh.instanceColor.needsUpdate=true;
+  S.shed.forEach(o=>o.visible=k>=S.shedH);
+  document.getElementById('stepOut').textContent = full? 'complete' : `layer ${k+1} of ${stepMax+1} · ${(Z0+(k+1-BASE)*S.mPerPlate).toFixed(0)} m`;
+  document.getElementById('labels').style.visibility = full&&state.labels ? 'visible':'hidden';
+}
+
+/* ================= UI ================= */
+const state={scene:'cradle',tier:2,res:100,ve:2,snow:true,labels:true,trees:true,view:'hero',slr:0};
+const fmt=n=>n.toLocaleString('en-AU');
+const hex=c=>'#'+COL[c].hex.toString(16).padStart(6,'0');
+function bom(){ const map=new Map();
+  for(const p of S.parts){ const a=Math.min(p.w,p.d),b=Math.max(p.w,p.d),sz=a+'x'+b; const key=p.k+sz+'|'+p.c; const e=map.get(key)||{k:`${KIND[p.k].name} ${a} x ${b}`,id:IDS[p.k][sz],c:p.c,n:0,kind:p.k}; e.n++; map.set(key,e);}
+  const rows=[...map.values(), ...S.extraParts.filter(e=>e.n>0)]; rows.sort((a,b)=>b.n-a.n); return rows; }
+function updateStats(){
+  const rows=bom(), total=rows.reduce((s,r)=>s+r.n,0), vis=S.parts.filter(p=>p.vis).length;
+  const hmm=(S.maxH*PLATE+STUD_H)/10, mpp=S.mPerPlate.toFixed(S.mPerPlate%1?1:0);
+  document.getElementById('stats').innerHTML=`
+   <div><b>${fmt(total)}</b>pieces (${S.SHELL?'visible shell':'solid build'})</div><div><b>${rows.length}</b>part/colour lots</div>
+   <div><b>${(NX*PITCH/10).toFixed(1)} × ${(NY*PITCH/10).toFixed(1)}</b>cm footprint (${NX}×${NY} studs)</div><div><b>${hmm.toFixed(1)} cm</b>tallest (${S.maxH} plates)</div>
+   ${S.SHELL?`<div><b>≈ ${fmt(S.hiddenEst)}</b>hidden infill (2×4-brick equiv., not listed)</div><div><b>${fmt(NX*NY)}</b>studs of footprint</div>`:`<div><b>${fmt(vis)}</b>visible shell parts</div><div><b>${fmt(total-vis)}</b>hidden infill</div>`}`;
+  document.getElementById('scaleLine').textContent=`1 stud = ${CELL} m · 1 plate = ${mpp} m · horizontal 1:${fmt(CELL/0.008)}${state.ve>1?` · vertical ×${state.ve}`:' · true scale'} · ${(FX*R/1000).toFixed(1)} × ${(FY*R/1000).toFixed(1)} km`;
+  document.getElementById('resNote').textContent=`${NX}×${NY} studs · ${(NX*PITCH/10).toFixed(0)}×${(NY*PITCH/10).toFixed(0)} cm`;
+  document.getElementById('veNote').textContent=`1 plate = ${mpp} m`;
+  document.getElementById('bomNote').textContent=(S.SHELL?`Large grid: only the visible shell is packed (${fmt(total)} pieces); the hidden core would need ≈ ${fmt(S.hiddenEst)} 2×4-brick equivalents, or support pillars. Shell of the ${NX}×${NY}-stud build`:`${fmt(total)} pieces for a solid ${NX}×${NY}-stud build`)+` of ${SC.name} at ${state.ve}× vertical scale${state.slr>0?`, sea level +${state.slr} m`:''}. Colour availability of each part has not been checked against current production.`;
+  document.getElementById('bom').innerHTML=rows.map(r=>`<tr><td>${r.k}</td><td class="id">${r.id}</td><td><span style="display:inline-flex;gap:6px;align-items:center"><span class="sw" style="background:${hex(r.c)}"></span>${COL[r.c].n}</span></td><td class="n">${fmt(r.n)}</td></tr>`).join('');
+  updateSlrReadout();
+}
+const LEG=[['dbg','Dolerite & cliffs (studded)'],['lbg','Talus & scree (studded)'],['olive','Alpine heath'],['sandgreen','Cushion plants'],['tan','Buttongrass & beach'],['dkgreen','Forest'],['white','Spring snow'],['tdblue','Water (tiles)'],['lbg','Urban: residential (tiles)'],['dbg','Urban: commercial & transport (tiles)'],['rbrown','Soil walls'],['black','Base plate']];
+document.getElementById('legend').innerHTML=LEG.map(([k,t])=>`<div><span class="sw" style="background:${hex(C[k])}"></span>${t}</div>`).join('');
+
+// landmarks
+const labelsEl=document.getElementById('labels'); let LANDMARKS=[];
+function makeLabels(){ labelsEl.innerHTML=''; LANDMARKS=SC.data.labels.map(([n,E,Nn,e,w])=>({n,E,N:Nn,e,w}));
+  if(SC.extra==='boatshed') LANDMARKS.push({n:'Boatshed',e:'',boat:1,w:0});
+  for(const L of LANDMARKS){ L.el=document.createElement('div'); L.el.className='lm'+(L.w?' water':''); L.el.innerHTML=`<div class="t">${L.n}</div>${L.e?`<div class="e">${L.e}</div>`:''}<div class="stem"></div>`; labelsEl.appendChild(L.el);} }
+function cellOf(E,Nn){ return {c:Math.min(NX-1,Math.max(0,Math.floor((E-E0)/CELL))), r:Math.min(NY-1,Math.max(0,Math.floor((N1-Nn)/CELL)))}; }
+function placeLabels(){ for(const L of LANDMARKS){ let r,c; if(L.boat){const b=boatshedCell(); if(!b){L.p=null;continue;} r=b.y;c=b.x;} else ({r,c}=cellOf(L.E,L.N));
+  L.p=new THREE.Vector3((c+.5)*PITCH,(S.H[r*NX+c]+(L.boat?2:0.6))*PLATE,(r+.5)*PITCH); } }
+function updateLabels(){ if(labelsEl.style.visibility==='hidden') return; const w=innerWidth,h=innerHeight;
+  for(const L of LANDMARKS){ if(!L.p){L.el.style.display='none';continue;} v.copy(L.p).project(camera); const on=v.z<1&&Math.abs(v.x)<1.05&&Math.abs(v.y)<1.05; L.el.style.display=on?'block':'none';
+    if(on){L.el.style.left=((v.x+1)/2*w)+'px'; L.el.style.top=((1-v.y)/2*h)+'px';} } }
+
+function heroTarget(){ const t=SC.hero.target; let E,Nn;
+  if(Array.isArray(t)) [E,Nn]=t; else { const l=SC.data.labels.find(l=>l[0]===t)||SC.data.labels[0]; E=l[1]; Nn=l[2]; }
+  const {r,c}=cellOf(E,Nn); return new THREE.Vector3((c+.5)*PITCH, S.H[r*NX+c]*PLATE*0.45, (r+.5)*PITCH); }
+// Fit: camera distance so the whole model (footprint x tallest column) lies inside the unobstructed
+// part of the canvas (panel excluded), for a given aim point t and viewing direction dir (target -> camera).
+const FIT_MARGIN=0.94;
+function fitPos(t, dir, zoom=1){
+  const f=dir.clone().normalize().negate(), r=new THREE.Vector3().crossVectors(f,camera.up).normalize(), u=new THREE.Vector3().crossVectors(r,f);
+  const {tx,ty}=VIEWPORT, top=(S?S.maxH:0)*PLATE+STUD_H; let dist=0;
+  for(const x of [0,W]) for(const z of [0,Dp]) for(const y of [0,top]){
+    const v=new THREE.Vector3(x-t.x,y-t.y,z-t.z), a=v.dot(r), b=v.dot(u), c=v.dot(f);
+    dist=Math.max(dist, Math.abs(a)/(tx*FIT_MARGIN)-c, Math.abs(b)/(ty*FIT_MARGIN)-c); }
+  dist*=zoom; return t.clone().addScaledVector(dir.clone().normalize(), dist); }
+const VIEWS={
+  hero:()=>{ const h=SC.hero, t=heroTarget(), az=h.az*Math.PI/180, el=h.el*Math.PI/180;
+    if(h.lead){ const m=h.mix??0.5; t.x=t.x*(1-m)+CX*m; t.z=t.z*(1-m)+CZ*m; const L0=h.lead*Math.max(W,Dp); t.x+=L0*Math.sin(az); t.z-=L0*Math.cos(az); t.y*=0.6; }
+    const dir=new THREE.Vector3(Math.cos(el)*Math.sin(az), Math.sin(el), -Math.cos(el)*Math.cos(az));
+    return {pos:fitPos(t,dir,h.zoom||1).toArray(), tgt:t.toArray()}; },
+  oblique:()=>{ const t=new THREE.Vector3(CX,30,CZ); return {pos:fitPos(t,new THREE.Vector3(1.1*W, 1.1*Math.max(W,Dp)-30, 0.75*Dp)).toArray(), tgt:t.toArray()}; },
+  plan:()=>{ const t=new THREE.Vector3(CX,0,CZ); return {pos:fitPos(t,new THREE.Vector3(0,1,0.0004)).toArray(), tgt:t.toArray()}; },
+};
+let tween=null;
+function setView(name,instant){ const V=VIEWS[name](); const from={p:camera.position.clone(),t:controls.target.clone()}; const to={p:new THREE.Vector3(...V.pos),t:new THREE.Vector3(...V.tgt)};
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(instant||reduce){camera.position.copy(to.p);controls.target.copy(to.t);tween=null;return;}
+  tween={from,to,t0:performance.now(),dur:1100}; }
+function pressGroup(el,btn){ el.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===btn?'true':'false')); }
+
+// scene picker
+const scenesEl=document.getElementById('scenes');
+scenesEl.innerHTML=SCENES.map(s=>`<button data-s="${s.id}" aria-pressed="${s.id===state.scene}">${s.name}<small>${s.region}</small></button>`).join('');
+scenesEl.addEventListener('click',e=>{const b=e.target.closest('button'); if(!b||b.dataset.s===state.scene) return; pressGroup(scenesEl,b); state.scene=b.dataset.s; heavy(()=>openScene(state.scene));});
+
+// sea-level rise: slider is quadratic in metres for fine control of small rises
+const SLR_MAX=70, slrEl=document.getElementById('slr');
+const t2m = t => { const m=SLR_MAX*(t/100)**2; return m<2? Math.round(m*10)/10 : m<10? Math.round(m*2)/2 : Math.round(m); };
+const m2t = m => Math.round(100*Math.sqrt(m/SLR_MAX));
+const MARKS=[[0,'today'],[1,'+1 m'],[3.3,'+3.3 m'],[7.4,'+7.4 m'],[58,'+58 m']];
+const MARK_TIPS={1:'≈ upper end of IPCC AR6 likely range for 2100 under SSP5-8.5 (0.63–1.01 m)',3.3:'≈ marine-based West Antarctic Ice Sheet (Bamber et al. 2009)',7.4:'≈ Greenland Ice Sheet (Morlighem et al. 2017, BedMachine)',58:'≈ whole Antarctic Ice Sheet (Morlighem et al. 2020, BedMachine Antarctica)'};
+document.getElementById('slrMarks').innerHTML=MARKS.map(([m,l])=>`<button data-m="${m}" title="${MARK_TIPS[m]||'present-day mean sea level'}">${l}</button>`).join('');
+function slrFlooded(slr){ // native-resolution flooded area (km²) for the readout
+  if(!(slr>0)) return 0; const F=floodMask(slr, DEMF, LAKEF, FX, FY); let n=0; for(let i=0;i<F.length;i++) if(F[i]&&!LAKEF[i]) n++; return n*R*R/1e6; }
+function updateSlrReadout(){
+  const box=document.getElementById('slrBox'), note=document.getElementById('slrNote'); const coastal=SC.data.sea; box.hidden=!coastal; note.hidden=!coastal; if(!coastal) return;
+  document.getElementById('slrOut').textContent = state.slr>0?`+${state.slr} m`:'present';
+  const km=slrFlooded(state.slr);
+  document.getElementById('slrArea').textContent = state.slr>0 ? `${km.toFixed(km<1?2:1)} km² of land inundated (at ${R} m)` : 'Drag to raise the sea';
+  const half=S? S.mPerPlate/2 : 0;
+  document.getElementById('slrWarn').textContent = state.slr>0 && state.slr<5 ? 'Below the DEM’s ~5 m vertical accuracy near the coast.' : (state.slr>0 && state.slr<half ? `Smaller than half a plate (${half.toFixed(0)} m): water rises inside the top plate.` : ''); }
+let slrTimer=null;
+slrEl.addEventListener('input',()=>{ state.slr=t2m(+slrEl.value); updateSlrReadout(); clearTimeout(slrTimer); slrTimer=setTimeout(()=>heavy(rebuild),250); });
+document.getElementById('slrMarks').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; state.slr=+b.dataset.m; slrEl.value=m2t(state.slr); updateSlrReadout(); heavy(rebuild);});
+
+const resOpts=()=>{ const r0=SC.data.r0||R; return r0===R?[4*R,2*R,R]:[4*r0,2*r0,r0,R]; };
+function resButtons(){ const opts=resOpts(); const el=document.getElementById('res');
+  el.innerHTML=opts.map(o=>`<button data-res="${o}" aria-pressed="${o===state.res}">${o} m</button>`).join(''); }
+document.getElementById('res').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b||+b.dataset.res===state.res) return; pressGroup(e.currentTarget,b); state.res=+b.dataset.res; state.tier=resOpts().indexOf(state.res); heavy(()=>{ const S0=Math.max(W,Dp), cp=camera.position.clone(), ct=controls.target.clone(); setRes(state.res); layout(); rebuild();
+    // same ground area, uniformly rescaled model (horizontal and vertical both scale with 1/CELL): keep the camera
+    const k=Math.max(W,Dp)/S0; tween=null; camera.position.copy(cp.multiplyScalar(k)); controls.target.copy(ct.multiplyScalar(k)); controls.update(); });});
+document.getElementById('views').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; pressGroup(e.currentTarget,b); state.view=b.dataset.v; setView(state.view);});
+const busy=document.getElementById('busy');
+function heavy(fn){ busy.hidden=false; setTimeout(async()=>{ await fn(); busy.hidden=true; },30); }
+document.getElementById('ve').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; pressGroup(e.currentTarget,b); state.ve=+b.dataset.ve; heavy(()=>{rebuild();});});
+function tog(id,key,after){ const el=document.getElementById(id); el.addEventListener('click',()=>{state[key]=!state[key]; el.setAttribute('aria-pressed',state[key]); after();}); }
+tog('snow','snow',()=>heavy(rebuild));
+tog('labelsT','labels',()=>applyStep(+document.getElementById('step').value));
+tog('trees','trees',()=>{S.canopyMesh.visible=state.trees;});
+document.getElementById('step').addEventListener('input',e=>applyStep(+e.target.value));
+const dlg=document.getElementById('dlg');
+document.getElementById('partsBtn').addEventListener('click',()=>dlg.showModal());
+document.getElementById('closeDlg').addEventListener('click',()=>dlg.close());
+document.getElementById('copyCsv').addEventListener('click',async e=>{ const csv='Part,DesignID,Colour,Qty\n'+bom().map(r=>`"${r.k}",${r.id},"${COL[r.c].n}",${r.n}`).join('\n');
+  const btn=e.currentTarget; try{await navigator.clipboard.writeText(csv); btn.textContent='Copied';}catch{ const ta=document.createElement('textarea'); ta.value=csv; dlg.querySelector('.tbl').prepend(ta); ta.style.width='100%'; ta.rows=6; ta.select(); btn.textContent='Select & copy'; } setTimeout(()=>btn.textContent='Copy CSV',1800); });
+const panel=document.getElementById('panel'), col=document.getElementById('collapse');
+col.addEventListener('click',()=>{const c=panel.classList.toggle('collapsed'); col.textContent=c?'Show controls':'Hide controls'; col.setAttribute('aria-expanded',!c); resize(); if(S) setView(state.view);});
+if(matchMedia('(max-width:720px)').matches){panel.classList.add('collapsed'); col.textContent='Show controls';}
+
+async function openScene(id){
+  await loadScene(id);
+  { const opts=resOpts(); state.res = opts.includes(state.res) && state.loaded ? state.res : opts[state.tier||0]; state.tier=opts.indexOf(state.res); state.loaded=true; }
+  state.slr=0; slrEl.value=0; state.view='hero'; state.ve=SC.ve||2;
+  pressGroup(document.getElementById('ve'), document.querySelector(`#ve button[data-ve="${state.ve}"]`));
+  pressGroup(document.getElementById('views'), document.getElementById('heroBtn'));
+  document.getElementById('heroBtn').textContent=SC.hero.label;
+  document.getElementById('title').textContent=SC.name;
+  document.getElementById('region').textContent=SC.region;
+  document.getElementById('blurb').textContent=SC.blurb;
+  document.getElementById('sceneNote').textContent=`${(FX*R/1000).toFixed(1)} × ${(FY*R/1000).toFixed(1)} km`;
+  document.title=`${SC.name} in Bricks`;
+  resButtons(); makeLabels(); setRes(state.res); layout(); rebuild(); setView('hero',true);
+  try{ history.replaceState(null,'','#'+id); }catch(e){}
+}
+
+// Shift the projection centre to the middle of the area not covered by the control panel.
+const VIEWPORT={tx:1,ty:1};
+function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.fov = w<720?44:32;
+  const pr=panel.classList.contains('collapsed')?null:panel.getBoundingClientRect(); let fw=w, fh=h;
+  if(pr && pr.width>0){ if(pr.left>w/2) fw=Math.max(w*0.4, pr.left-8); else if(pr.top>h/2) fh=Math.max(h*0.4, pr.top-8); }
+  const sx=(w-fw)/2, sy=(h-fh)/2;
+  if(sx>0||sy>0) camera.setViewOffset(w+2*sx, h+2*sy, 2*sx, 2*sy, w, h); else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+  const fpx=((h+2*sy)/2)/Math.tan(camera.fov*Math.PI/360); VIEWPORT.tx=(fw/2)/fpx; VIEWPORT.ty=(fh/2)/fpx; }
+addEventListener('resize',resize); resize();
+const needle=document.getElementById('needle');
+function loop(now){
+  if(tween){ const u=Math.min(1,(now-tween.t0)/tween.dur), e=u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2;
+    camera.position.lerpVectors(tween.from.p,tween.to.p,e); controls.target.lerpVectors(tween.from.t,tween.to.t,e); if(u>=1) tween=null; }
+  controls.update(); renderer.render(scene,camera); if(S) updateLabels();
+  const az=Math.atan2(camera.position.x-controls.target.x, camera.position.z-controls.target.z);
+  needle.style.transform=`rotate(${az*180/Math.PI}deg)`;
+  requestAnimationFrame(loop); }
+const start = (location.hash||'').slice(1); if(SCENES.some(s=>s.id===start) && start!=='cradle'){ state.scene=start; state.tier=0; pressGroup(scenesEl, scenesEl.querySelector(`[data-s="${start}"]`)); }
+openScene(state.scene).then(()=>{ busy.hidden=true; requestAnimationFrame(loop); }).catch(e=>{ busy.hidden=false; busy.textContent='Could not load scene data ('+e.message+')'; console.error(e); });
+</script>
