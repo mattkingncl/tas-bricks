@@ -179,7 +179,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 const SCENES = [
  {id:'cradle', name:'Cradle Mountain & Dove Lake', region:'Cradle Mountain–Lake St Clair NP', hero:{label:'Boatshed', az:8, el:24, d:1.55, target:'Cradle Mountain'}, extra:'boatshed',
   blurb:'Dolerite towers above a glacial lake, seen from the Dove Lake boatshed.'},
- {id:'hobart', name:'Hobart & kunanyi', region:'nipaluna / Hobart', hero:{label:'From the Derwent', az:60, el:26, d:1.6, target:'kunanyi / Mt Wellington', lead:0.08},
+ {id:'hobart', res0:75, name:'Hobart & kunanyi', region:'nipaluna / Hobart', hero:{label:'From the Derwent', az:60, el:26, d:1.6, target:'kunanyi / Mt Wellington', lead:0.08},
   blurb:'kunanyi / Mt Wellington (1271 m) rises straight out of the Derwent estuary behind the city.'},
  {id:'gorge', ve:3, name:'Cataract Gorge', region:'Launceston', hero:{label:'From the city', az:50, el:32, d:1.6, target:'Cataract Gorge', lead:0.08},
   blurb:'The South Esk cuts a dolerite gorge into the heart of Launceston before joining kanamaluka / Tamar.'},
@@ -583,7 +583,7 @@ if(matchMedia('(max-width:720px)').matches){panel.classList.add('collapsed'); co
 
 async function openScene(id){
   await loadScene(id);
-  { const opts=resOpts(); state.res = opts.includes(state.res) && state.loaded ? state.res : opts[state.tier||0]; state.tier=opts.indexOf(state.res); state.loaded=true; }
+  { const opts=resOpts(); state.res = opts.includes(state.res) && state.loaded ? state.res : (opts.includes(SC.res0) ? SC.res0 : opts[state.tier||0]); state.tier=opts.indexOf(state.res); state.loaded=true; }
   state.slr=0; slrEl.value=0; state.view='hero'; state.ve=SC.ve||2;
   pressGroup(document.getElementById('ve'), document.querySelector(`#ve button[data-ve="${state.ve}"]`));
   pressGroup(document.getElementById('views'), document.getElementById('heroBtn'));
