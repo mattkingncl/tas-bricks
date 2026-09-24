@@ -480,6 +480,9 @@ function applyStep(k){
 
 /* ================= UI ================= */
 const state={scene:'cradle',tier:2,res:100,ve:2,snow:true,labels:true,trees:true,bldg:true,view:'hero',slr:0};
+// Phones and tablets: open at the coarsest resolution (users can still step up)
+const MOBILE = matchMedia("(pointer: coarse)").matches && Math.min(screen.width, screen.height) <= 820;
+if(MOBILE) state.tier=0;
 const fmt=n=>n.toLocaleString('en-AU');
 const hex=c=>'#'+COL[c].hex.toString(16).padStart(6,'0');
 function bom(){ const map=new Map();
@@ -594,7 +597,7 @@ if(matchMedia('(max-width:720px)').matches){panel.classList.add('collapsed'); co
 
 async function openScene(id){
   await loadScene(id);
-  { const opts=resOpts(); state.res = opts.includes(state.res) && state.loaded ? state.res : (opts.includes(SC.res0) ? SC.res0 : opts[state.tier||0]); state.tier=opts.indexOf(state.res); state.loaded=true; }
+  { const opts=resOpts(); state.res = opts.includes(state.res) && state.loaded ? state.res : (!MOBILE && opts.includes(SC.res0) ? SC.res0 : opts[state.tier||0]); state.tier=opts.indexOf(state.res); state.loaded=true; }
   state.slr=0; slrEl.value=0; state.view='hero'; state.ve=SC.ve||3;
   pressGroup(document.getElementById('ve'), document.querySelector(`#ve button[data-ve="${state.ve}"]`));
   pressGroup(document.getElementById('views'), document.getElementById('heroBtn'));
