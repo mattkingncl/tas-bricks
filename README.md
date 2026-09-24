@@ -37,5 +37,13 @@ In the site block, let the browser revalidate data (ETag) so regenerated scenes 
     header /data/* Cache-Control "no-cache"
     header /lib/*  Cache-Control "public, max-age=31536000, immutable"
 
+## Buildings (Hobart, Launceston)
+`b` in scenes_meta.json / data/<scene>.json: per 25 m cell building height (uint8, 0.5 m units, raw deflate,
+base64), from Overture Maps buildings release 2026-09-23.0 (z14 PMTiles). 16 sub-samples per cell; a cell is
+built when >= 4 fall in a footprint and takes the tallest building there. Height = `height` (mostly Microsoft ML),
+raised to 3.3 m x `num_floors` where tagged; else residential 5 m, outbuilding 3 m, other 8 m. precut.py carries
+`b` through from scenes_meta.json unchanged. Toggle "Buildings" in the page. Remove the `b` key to drop the layer.
+
 Data: LIST Tasmania 25 m DEM, Hydrographic Areas, Landuse Live — Land Tasmania, CC BY 3.0 AU.
+Buildings: Overture Maps Foundation (© OpenStreetMap contributors, ODbL; Microsoft ML Buildings, ODbL).
 three.js r160 — MIT licence (lib/three/LICENSE).

@@ -144,6 +144,7 @@ td.id{font-family:var(--mono);color:var(--ink2)}
     <button class="tog" id="snow" aria-pressed="true"><i></i>Spring snow</button>
     <button class="tog" id="labelsT" aria-pressed="true"><i></i>Labels</button>
     <button class="tog" id="trees" aria-pressed="true"><i></i>Canopy</button>
+    <button class="tog" id="bldgT" aria-pressed="true" hidden><i></i>Buildings</button>
   </div>
   <div class="grp">
     <div class="lbl">Build step <span id="stepOut">complete</span></div>
@@ -156,6 +157,7 @@ td.id{font-family:var(--mono);color:var(--ink2)}
   </div>
   <button class="btn primary" id="partsBtn">Parts list</button>
   <p class="note">Elevation: LIST Tasmania 25&nbsp;m DEM (Land Tasmania, CC BY 3.0 AU; TIN of 1:25k 10&nbsp;m contours, spot heights and water bodies; 90% within 5&nbsp;m), exactly area-averaged to the chosen stud size. Blocks holding a LIST spot height take the surveyed value. Lakes: LIST Hydrographic Areas at full-supply level; a block is water when ≥50% covered. Sea = cells outside the DEM (heights are AHD, ≈ mean sea level). Grid is MGA zone 55. Labels from LIST Named Features and spot heights. Urban areas: LIST Landuse Live (ALUM 5.3–5.9 intensive uses excl. rural residential and recreation), shown as flat tiles where a block is ≥50% urban. Other surface colours are a slope/elevation classification, not mapped vegetation.</p>
+  <p class="note" id="bldgNote" hidden>Buildings: Overture Maps Foundation, buildings theme release 2026-09-23.0 (footprints mostly OpenStreetMap, © OpenStreetMap contributors, ODbL). Height = building height where given (mostly Microsoft ML estimates), raised to 3.3&nbsp;m × floors where floors are tagged; else a default by type (houses 5&nbsp;m, sheds 3&nbsp;m, other 8&nbsp;m). A 25&nbsp;m cell is built when ≥4 of 16 sub-samples fall in a footprint and takes the tallest building there; coarser blocks take the mean of their built cells when ≥25% built. Buildings sit on top of the terrain; none on flooded cells. Indicative only.</p>
   <p class="note" id="slrNote">Sea-level rise is a static, uniform (“bathtub”) rise with hydraulic connectivity to the sea, computed on the metre heights before brick quantisation. It ignores ocean-dynamic and gravitational fingerprints, vertical land motion/GIA, tides and surge. The DEM interpolates between the 1&nbsp;m coastline and the first 10&nbsp;m contour, so rises of a few metres are not reliably resolved; use LiDAR for planning.</p>
 </aside>
 
@@ -205,8 +207,8 @@ const PITCH = 8, PLATE = 3.2, STUD_H = 1.7, GAP = 0.1;   // LEGO system dimensio
 const BASE = 1;                                            // one plate under the lowest point
 const SEA = 250;
 const SHELL_N = 40000;                                     // above this many studs, build the visible shell only
-let SC, R, FX, FY, E0, N1, DEMF, LAKEF, URBF, LEV, SPOTS;        // scene + native (finest) grid
-let NX, NY, N, CELL, H_M, LAKE, URB, Z0, SLOPE, SURF, FOREST, COAST, NZ1, NZ2, NZ3, NZ4, NZ5, FLOOD;
+let SC, R, FX, FY, E0, N1, DEMF, LAKEF, URBF, BLDF, LEV, SPOTS;        // scene + native (finest) grid
+let NX, NY, N, CELL, H_M, LAKE, URB, BH, Z0, SLOPE, SURF, FOREST, COAST, NZ1, NZ2, NZ3, NZ4, NZ5, FLOOD;
 
 const COL = [
  {k:'black',    n:'Black',             hex:0x1B2A34},
@@ -223,6 +225,7 @@ const COL = [
  {k:'dkbrown',  n:'Dark Brown',        hex:0x352100},
  {k:'dkblue',   n:'Dark Blue',         hex:0x0A3463},
  {k:'tdblue',   n:'Trans-Dark Blue',   hex:0x0020A0},
+ {k:'sandblue', n:'Sand Blue',         hex:0x6074A1},
 ];
 const C = Object.fromEntries(COL.map((c,i)=>[c.k,i]));
 const WATER = C.tdblue;
@@ -238,6 +241,7 @@ async function loadScene(id){
   DEMF=new Float32Array(FX*FY);
   for(let y=0;y<FY;y++)for(let x=0;x<FX;x++){const i=y*FX+x; DEMF[i]= x? DEMF[i-1]+del[i] : (y? DEMF[i-FX]+del[i] : del[i]);}
   URBF = raw.length>=FX*FY*4 ? raw.slice(FX*FY*3,FX*FY*4) : (d.u ? await inflate(d.u) : new Uint8Array(FX*FY));
+  BLDF = d.b ? await inflate(d.b) : null;   // building height, 0.5 m units per 25 m cell (Overture Maps)
   SC.data=d;
 }
 
@@ -251,12 +255,14 @@ function field(seed, passes){
 // Resample the native grid to the chosen stud size (exact block means), then classify the surface.
 function setRes(res){
   const f = res/R; CELL = res; NX = FX/f; NY = FY/f; N = NX*NY;
-  H_M = new Float32Array(N); LAKE = new Uint8Array(N); URB = new Uint8Array(N);
+  H_M = new Float32Array(N); LAKE = new Uint8Array(N); URB = new Uint8Array(N); BH = new Float32Array(N);
   const best = new Map();
   for(let r=0;r<NY;r++)for(let c=0;c<NX;c++){
     let s=0,ns=0,u1=0,u2=0; const cnt={};
     for(let a=0;a<f;a++)for(let b=0;b<f;b++){const j=(r*f+a)*FX+c*f+b; const k=LAKEF[j]; if(k) cnt[k]=(cnt[k]||0)+1; if(k!==SEA){s+=DEMF[j];ns++;} if(URBF[j]===1)u1++; else if(URBF[j]===2)u2++;}
     const i=r*NX+c; H_M[i]= ns? s/ns : 0; if((u1+u2)*2>=f*f) URB[i]= u1>=u2?1:2;
+    if(BLDF){ let bs=0,bn=0; for(let a=0;a<f;a++)for(let b=0;b<f;b++){const v=BLDF[(r*f+a)*FX+c*f+b]; if(v){bs+=v;bn++;}}
+      if(bn*4>=f*f) BH[i]=bs/bn/2; }   // mean height of built 25 m cells, where >= 25% of the block is built
     let bk=0,bn=0; for(const k in cnt) if(cnt[k]>bn){bn=cnt[k];bk=+k;}
     if(bn*2>=f*f) LAKE[i]=bk;
     for(const k in cnt){ if(+k===SEA||+k===99) continue; const e=best.get(+k); if(!e||cnt[k]>e.n) best.set(+k,{i,n:cnt[k]}); }
@@ -327,27 +333,31 @@ function build(ve, snow, slr){
     else H[i]=q(H_M[i]); }
   for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=y*NX+x; if(WET[i]) continue;
     for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const xx=x+dx,yy=y+dy; if(xx<0||yy<0||xx>=NX||yy>=NY) continue; const j=yy*NX+xx; if(WET[j]&&H[i]<H[j]) H[i]=H[j];}}
+  // Buildings: plates on top of the terrain column (not on water or flooded cells); at least one plate where built.
+  const BP = new Uint8Array(N);
+  if(state.bldg && BLDF) for(let i=0;i<N;i++) if(BH[i]>0 && !WET[i]){ const nb=Math.max(1,Math.round(BH[i]/mPerPlate)); BP[i]=Math.min(250,nb); H[i]+=BP[i]; }
   let maxH=0; for(let i=0;i<N;i++) if(H[i]>maxH) maxH=H[i];
   const VIS = new Int16Array(N);
   for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=y*NX+x;
     if(x===0||y===0||x===NX-1||y===NY-1){VIS[i]=0;continue;}
     VIS[i]=Math.min(H[i]-1,H[i-1],H[i+1],H[i-NX],H[i+NX]);}
   const snowTop = new Uint8Array(N);
-  if(snow) for(let i=0;i<N;i++) if(!WET[i] && H_M[i] >= 1215 + 70*NZ3[i] && SLOPE[i] < 44) snowTop[i]=1;
+  if(snow) for(let i=0;i<N;i++) if(!WET[i] && !BP[i] && H_M[i] >= 1215 + 70*NZ3[i] && SLOPE[i] < 44) snowTop[i]=1;
   const substrate = (i,z) => { const e = Z0 + (z-BASE+0.5)*mPerPlate, v = (NZ4[i]*2.3 + Math.floor(z/3)*0.618)%1;
     return e>=1120 ? (v<0.78?C.dbg:C.lbg) : (v<0.68?C.rbrown:C.dkbrown); };
   const colourAt = (i,z) => {
     if(WET[i]){ if(z===H[i]-1) return WATER; if(z===H[i]-2) return FLOOD[i]&&SURF[i]!==WATER ? SURF[i] : C.dkblue; return z<BASE?C.black:substrate(i,z); }
-    const top = FOREST[i]?3:2;
-    if(z<BASE && z<H[i]-top) return C.black;
-    if(z>=H[i]-top) return (z===H[i]-1 && snowTop[i]) ? C.white : SURF[i];
+    if(BP[i] && z>=H[i]-BP[i]) return BH[i]<9 ? C.white : BH[i]<25 ? C.lbg : C.sandblue;   // building (height class)
+    const top = FOREST[i]?3:2, Ht = H[i]-BP[i];
+    if(z<BASE && z<Ht-top) return C.black;
+    if(z>=Ht-top) return (z===Ht-1 && snowTop[i]) ? C.white : SURF[i];
     return substrate(i,z);
   };
   // Build layer by layer (memory O(N)). Large grids build only the visible shell; the hidden infill is estimated.
   const SHELL = N > SHELL_N;
   const layers = new Map(); let hiddenPlates = 0;
   const push = (z,k,i,c) => { const key=z*3+(k==='B'?0:k==='P'?1:2); let L=layers.get(key); if(!L){ L={z,k,cells:[],cols:[]}; layers.set(key,L); } L.cells.push(i); L.cols.push(c); };
-  for(let i=0;i<N;i++){ const h=H[i]; let z=0; const ut = URB[i] && !WET[i];
+  for(let i=0;i<N;i++){ const h=H[i]; let z=0; const ut = (URB[i]||BP[i]) && !WET[i];
     if(SHELL){ const v=Math.max(0,VIS[i]); z=v-(v%3); hiddenPlates+=z; }
     while(z<h){ const c=colourAt(i,z);
       if(z%3===0 && z+2<=h-1 && c!==WATER && !(ut && z+2===h-1) && colourAt(i,z+1)===c && colourAt(i,z+2)===c){ push(z,'B',i,c); z+=3; }
@@ -370,7 +380,7 @@ function build(ve, snow, slr){
   for(const p of parts){ if(p.k==='T') continue; const t=p.z+KIND[p.k].h;
     for(let yy=p.y;yy<p.y+p.d;yy++)for(let xx=p.x;xx<p.x+p.w;xx++){const j=yy*NX+xx;
       if(t===H[j]) studsTop.push({x:xx,y:yy,t,c:p.c}); else if(!SHELL) studsCut.push({x:xx,y:yy,t,c:p.c});}}
-  const canopy=[]; for(let i=0;i<N;i++) if(FOREST[i] && !WET[i] && !snowTop[i] && NZ5[i]>0.5) canopy.push({x:i%NX,y:(i/NX)|0,t:H[i],c:(NZ5[i]>0.8?C.green:C.dkgreen)});
+  const canopy=[]; for(let i=0;i<N;i++) if(FOREST[i] && !BP[i] && !WET[i] && !snowTop[i] && NZ5[i]>0.5) canopy.push({x:i%NX,y:(i/NX)|0,t:H[i],c:(NZ5[i]>0.8?C.green:C.dkgreen)});
   return {H,maxH,parts,studsTop,studsCut,canopy,mPerPlate,SHELL,hiddenEst:Math.round(hiddenPlates/24)};
 }
 
@@ -469,7 +479,7 @@ function applyStep(k){
 }
 
 /* ================= UI ================= */
-const state={scene:'cradle',tier:2,res:100,ve:2,snow:true,labels:true,trees:true,view:'hero',slr:0};
+const state={scene:'cradle',tier:2,res:100,ve:2,snow:true,labels:true,trees:true,bldg:true,view:'hero',slr:0};
 const fmt=n=>n.toLocaleString('en-AU');
 const hex=c=>'#'+COL[c].hex.toString(16).padStart(6,'0');
 function bom(){ const map=new Map();
@@ -489,7 +499,7 @@ function updateStats(){
   document.getElementById('bom').innerHTML=rows.map(r=>`<tr><td>${r.k}</td><td class="id">${r.id}</td><td><span style="display:inline-flex;gap:6px;align-items:center"><span class="sw" style="background:${hex(r.c)}"></span>${COL[r.c].n}</span></td><td class="n">${fmt(r.n)}</td></tr>`).join('');
   updateSlrReadout();
 }
-const LEG=[['dbg','Dolerite & cliffs (studded)'],['lbg','Talus & scree (studded)'],['olive','Alpine heath'],['sandgreen','Cushion plants'],['tan','Buttongrass & beach'],['dkgreen','Forest'],['white','Spring snow'],['tdblue','Water (tiles)'],['lbg','Urban: residential (tiles)'],['dbg','Urban: commercial & transport (tiles)'],['rbrown','Soil walls'],['black','Base plate']];
+const LEG=[['dbg','Dolerite & cliffs (studded)'],['lbg','Talus & scree (studded)'],['olive','Alpine heath'],['sandgreen','Cushion plants'],['tan','Buttongrass & beach'],['dkgreen','Forest'],['white','Spring snow'],['tdblue','Water (tiles)'],['lbg','Urban: residential (tiles)'],['dbg','Urban: commercial & transport (tiles)'],['white','Buildings < 9 m'],['lbg','Buildings 9–25 m'],['sandblue','Buildings ≥ 25 m'],['rbrown','Soil walls'],['black','Base plate']];
 document.getElementById('legend').innerHTML=LEG.map(([k,t])=>`<div><span class="sw" style="background:${hex(C[k])}"></span>${t}</div>`).join('');
 
 // landmarks
@@ -571,6 +581,7 @@ function tog(id,key,after){ const el=document.getElementById(id); el.addEventLis
 tog('snow','snow',()=>heavy(rebuild));
 tog('labelsT','labels',()=>applyStep(+document.getElementById('step').value));
 tog('trees','trees',()=>{S.canopyMesh.visible=state.trees;});
+tog('bldgT','bldg',()=>heavy(rebuild));
 document.getElementById('step').addEventListener('input',e=>applyStep(+e.target.value));
 const dlg=document.getElementById('dlg');
 document.getElementById('partsBtn').addEventListener('click',()=>dlg.showModal());
@@ -588,6 +599,7 @@ async function openScene(id){
   pressGroup(document.getElementById('ve'), document.querySelector(`#ve button[data-ve="${state.ve}"]`));
   pressGroup(document.getElementById('views'), document.getElementById('heroBtn'));
   document.getElementById('heroBtn').textContent=SC.hero.label;
+  document.getElementById('bldgT').hidden=!BLDF; document.getElementById('bldgNote').hidden=!BLDF;
   document.getElementById('title').textContent=SC.name;
   document.getElementById('region').textContent=SC.region;
   document.getElementById('blurb').textContent=SC.blurb;
