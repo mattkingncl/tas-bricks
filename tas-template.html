@@ -177,25 +177,25 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 /* ================= SCENES ================= */
 // hero: camera azimuth FROM target (deg, clockwise from grid north), elevation angle, distance × model size; target optional [E,N]
 const SCENES = [
- {id:'cradle', name:'Cradle Mountain & Dove Lake', region:'Cradle Mountain–Lake St Clair NP', hero:{label:'Boatshed', az:8, el:24, d:1.55, target:'Cradle Mountain'}, extra:'boatshed',
+ {id:'cradle', res0:25, ve:3, name:'Cradle Mountain & Dove Lake', region:'Cradle Mountain–Lake St Clair NP', hero:{label:'Boatshed', az:340, el:15, d:1.55, target:'Cradle Mountain'}, extra:'boatshed',
   blurb:'Dolerite towers above a glacial lake, seen from the Dove Lake boatshed.'},
- {id:'hobart', res0:75, name:'Hobart & kunanyi', region:'nipaluna / Hobart', hero:{label:'From the Derwent', az:60, el:26, d:1.6, target:'kunanyi / Mt Wellington', lead:0.08},
+ {id:'hobart', res0:75, ve:3, name:'Hobart & kunanyi', region:'nipaluna / Hobart', hero:{label:'From the Derwent', az:60, el:20, d:1.6, target:'kunanyi / Mt Wellington', lead:0.08},
   blurb:'kunanyi / Mt Wellington (1271 m) rises straight out of the Derwent estuary behind the city.'},
- {id:'gorge', ve:3, name:'Cataract Gorge', region:'Launceston', hero:{label:'From the city', az:50, el:32, d:1.6, target:'Cataract Gorge', lead:0.08},
+ {id:'gorge', ve:3, name:'Cataract Gorge', region:'Launceston', hero:{label:'From the city', az:50, el:20, d:1.6, target:'Cataract Gorge', lead:0.08},
   blurb:'The South Esk cuts a dolerite gorge into the heart of Launceston before joining kanamaluka / Tamar.'},
- {id:'freycinet', ve:3, name:'Wineglass Bay & the Hazards', region:'Freycinet Peninsula', hero:{label:'From Great Oyster Bay', az:265, el:26, d:1.6, target:'Mount Freycinet', lead:0.08},
+ {id:'freycinet', ve:4, name:'Wineglass Bay & the Hazards', region:'Freycinet Peninsula', hero:{label:'From Great Oyster Bay', az:265, el:20, d:1.6, target:'Mount Freycinet', lead:0.08},
   blurb:'Pink granite domes and the perfect curve of Wineglass Bay.'},
- {id:'tasman', ve:3, name:'Cape Pillar & Tasman Island', region:'Tasman Peninsula', hero:{label:'From the Tasman Sea', az:150, el:22, d:1.6, target:'Cape Pillar', lead:0.08},
+ {id:'tasman', ve:4, name:'Cape Pillar & Tasman Island', region:'Tasman Peninsula', hero:{label:'From the Tasman Sea', az:150, el:22, d:1.6, target:'Cape Pillar', lead:0.08},
   blurb:'The highest sea cliffs in the Southern Hemisphere, dolerite columns falling 300 m to the ocean.'},
- {id:'stclair', name:'Lake St Clair & Mt Olympus', region:'Cradle Mountain–Lake St Clair NP', hero:{label:'From Cynthia Bay', az:170, el:24, d:1.6, target:'Mount Olympus', lead:0.08},
+ {id:'stclair', res0:25, ve:4, name:'Lake St Clair & Mt Olympus', region:'Cradle Mountain–Lake St Clair NP', hero:{label:'From Cynthia Bay', az:130, el:20, d:1.6, target:'Mount Olympus', lead:0.08},
   blurb:'Australia’s deepest lake, gouged by glaciers beneath Mt Olympus and Mt Ida.'},
- {id:'ossa', name:'Mt Ossa & the Pelions', region:'Overland Track', hero:{label:'From Pelion Plains', az:305, el:26, d:1.6, target:'Mount Ossa', lead:0.08},
+ {id:'ossa', ve:4, name:'Mt Ossa & the Pelions', region:'Overland Track', hero:{label:'From Pelion Plains', az:305, el:26, d:1.6, target:'Mount Ossa', lead:0.08},
   blurb:'Tasmania’s highest summit (1617 m) among the dolerite giants of the Overland Track.'},
- {id:'frenchmans', name:'Frenchmans Cap', region:'Franklin–Gordon Wild Rivers NP', hero:{label:'From the north', az:340, el:24, d:1.6, target:'Frenchmans Cap', lead:0.08},
+ {id:'frenchmans', res0:50, ve:3, name:'Frenchmans Cap', region:'Franklin–Gordon Wild Rivers NP', hero:{label:'From the north', az:30, el:35, d:1.6, target:'Frenchmans Cap', lead:0.08},
   blurb:'A white quartzite cap and sheer eastern face above Lake Tahune.'},
- {id:'federation', name:'Federation Peak', region:'Eastern Arthur Range', hero:{label:'From the south-west', az:215, el:24, d:1.6, target:'Federation Peak', lead:0.08},
+ {id:'federation', ve:4, name:'Federation Peak', region:'Eastern Arthur Range', hero:{label:'From the south-west', az:215, el:24, d:1.6, target:'Federation Peak', lead:0.08},
   blurb:'The most remote, hardest-won summit in Australia’s south-west wilderness.'},
- {id:'nut', ve:5, name:'The Nut, Stanley', region:'Circular Head', hero:{label:'From Bass Strait', az:100, el:22, d:1.1, target:'The Nut', lead:0.03, mix:0.2},
+ {id:'nut', res0:50, ve:5, name:'The Nut, Stanley', region:'Circular Head', hero:{label:'From Bass Strait', az:190, el:22, d:1.1, target:'The Nut', lead:0.03, mix:0.2},
   blurb:'A 143 m basalt volcanic plug tethered to the coast by a narrow isthmus.'},
 ];
 
@@ -584,7 +584,7 @@ if(matchMedia('(max-width:720px)').matches){panel.classList.add('collapsed'); co
 async function openScene(id){
   await loadScene(id);
   { const opts=resOpts(); state.res = opts.includes(state.res) && state.loaded ? state.res : (opts.includes(SC.res0) ? SC.res0 : opts[state.tier||0]); state.tier=opts.indexOf(state.res); state.loaded=true; }
-  state.slr=0; slrEl.value=0; state.view='hero'; state.ve=SC.ve||2;
+  state.slr=0; slrEl.value=0; state.view='hero'; state.ve=SC.ve||3;
   pressGroup(document.getElementById('ve'), document.querySelector(`#ve button[data-ve="${state.ve}"]`));
   pressGroup(document.getElementById('views'), document.getElementById('heroBtn'));
   document.getElementById('heroBtn').textContent=SC.hero.label;
