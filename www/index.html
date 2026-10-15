@@ -124,15 +124,8 @@ td.id{font-family:var(--mono);color:var(--ink2)}
     <div class="lbl">Explore <span id="modeNote"></span></div>
     <div class="seg" id="modes">
       <button data-m="land" aria-pressed="true">Landscape</button>
-      <button data-m="fire" aria-pressed="false">Bushfire</button>
       <button data-m="water" aria-pressed="false">Water drop</button>
     </div>
-  </div>
-  <div class="modebox" id="fireBox" hidden>
-    <div class="lbl">Fire season <span id="fireOut"></span></div>
-    <input type="range" id="fireYear" min="1900" max="2026" value="2026" step="1" aria-label="Fire season">
-    <div class="row"><button class="btn" id="firePlay">▶ Play</button></div>
-    <div class="readout" id="fireRead"></div>
   </div>
   <div class="modebox" id="waterBox" hidden>
     <div class="readout" id="waterRead">Tap the land to release a raindrop. It runs downhill to the sea, or to the edge of the model.</div>
@@ -166,6 +159,7 @@ td.id{font-family:var(--mono);color:var(--ink2)}
     <button class="tog" id="lgmT" aria-pressed="false" hidden><i></i>Ice age</button>
     <button class="tog" id="labelsT" aria-pressed="true"><i></i>Labels</button>
     <button class="tog" id="trees" aria-pressed="true"><i></i>Canopy</button>
+    <button class="tog" id="fireT" aria-pressed="false" hidden><i></i>Fire history</button>
     <button class="tog" id="bldgT" aria-pressed="true" hidden><i></i>Buildings</button>
     <button class="tog" id="geoT" aria-pressed="false" hidden><i></i>Geology map</button>
   </div>
@@ -183,7 +177,7 @@ td.id{font-family:var(--mono);color:var(--ink2)}
   <p class="note" id="geoNote" hidden>Geology: Mineral Resources Tasmania digital geology, 1:25&nbsp;000 (1:250&nbsp;000 where unmapped), via theLIST (CC BY 3.0 AU). The walls and build-step slices show rock; <i>Geology map</i> also replaces the vegetation plate with the mapped unit. Below ground is an indicative 2.5D model: bases of the near-flat Jurassic dolerite and Permian–Triassic (Parmeener) layers are fitted to the DEM elevation of mapped contacts (a plane of ≤3° dip plus a local correction that fades over ~600&nbsp;m), then forced to agree with the surface map in every cell; older folded basement is extended vertically from the nearest mapped outcrop; glacial and other Quaternary cover is a 10&nbsp;m veneer. Faults are not yet modelled. Use the build-step slider to slice through it.</p>
   <p class="note" id="bldgNote" hidden>Buildings: Overture Maps Foundation, buildings theme release 2026-09-23.0 (footprints mostly OpenStreetMap, © OpenStreetMap contributors, ODbL). Height = building height where given (mostly Microsoft ML estimates), raised to 3.3&nbsp;m × floors where floors are tagged; else a default by type (houses 5&nbsp;m, sheds 3&nbsp;m, other 8&nbsp;m). A 25&nbsp;m cell is built when ≥4 of 16 sub-samples fall in a footprint and takes the tallest building there; coarser blocks take the mean of their built cells when ≥25% built. Buildings sit on top of the terrain; none on flooded cells. Indicative only.</p>
   <p class="note" id="lgmNote" hidden>Ice age: glacier outlines from the GLACIMONTIS compilation of reconstructed palaeoglaciers (Zenodo, doi:10.5281/zenodo.15600659, CC BY 4.0), which for Tasmania maps the maximum ice extent of the last glaciation from Colhoun &amp; Barrows (2001), Barrows et al. (2002) and Mackintosh et al. (2006). Ice thickness is not mapped: it is modelled as perfectly plastic ice (basal shear stress 100&nbsp;kPa, ρ&nbsp;=&nbsp;900&nbsp;kg&nbsp;m<sup>−3</sup>) on today’s ground surface, built inwards from the mapped margin, so it is indicative only (no isostasy, lakes not removed from the bed). <span id="lgmSea"></span></p>
-  <p class="note" id="fireNote" hidden>Fire history: theLIST <i>Fire History – All</i> (Tasmanian Government fire agencies, via theLIST, CC BY 3.0 AU): mapped perimeters of bushfires and planned burns by fire season. A 25&nbsp;m cell counts as burnt when ≥50% of it lies inside a mapped perimeter; perimeters include unburnt patches, and records before the 1990s are incomplete. The top plate shows the most recent fire up to the chosen season; coarser blocks follow the majority of their 25&nbsp;m cells.</p>
+  <p class="note" id="fireNote" hidden>Fire history: theLIST <i>Fire History – All</i> (Tasmanian Government fire agencies, via theLIST, CC BY 3.0 AU): mapped perimeters of bushfires and planned burns by fire season (July–June). A round tile marks every block whose most recent recorded fire is within 60 years (bushfires) or 20 years (planned burns), coloured by years before the current season; it sits on the canopy where there is one. A 25&nbsp;m cell counts as burnt when ≥50% of it lies inside a perimeter; coarser blocks follow the majority of their 25&nbsp;m cells. Perimeters include unburnt patches, and records before the 1990s are incomplete. <span id="fireSum"></span></p>
   <p class="note" id="waterNote" hidden>Water drop: the drop follows the steepest descent over the block heights shown (D8 routing on a depression-filled surface: Priority-Flood with ε, Barnes et al. 2014), so paths and catchments are only as good as the chosen stud size. Wet sea cells and the model edge are outlets; lakes are crossed at their outlet. The red outline encloses every block that drains to the same outlet. Shown on the 1&nbsp;km All of Tasmania scene only.</p>
   <p class="note" id="slrNote">Sea-level rise is a static, uniform (“bathtub”) rise with hydraulic connectivity to the sea, computed on the metre heights before brick quantisation. It ignores ocean-dynamic and gravitational fingerprints, vertical land motion/GIA, tides and surge. The DEM interpolates between the 1&nbsp;m coastline and the first 10&nbsp;m contour, so rises of a few metres are not reliably resolved; use LiDAR for planning.<span id="bathyNote" hidden> Sea floor: AusBathyTopo (Australia) 250&nbsp;m 2026 (Geoscience Australia, CC BY 4.0), heights relative to mean sea level, bilinear to 25&nbsp;m, shown to a floor of −150&nbsp;m. Lowering the sea exposes sea floor connected to open water at the model edge; enclosed basins are shown dry. Today’s sea floor is used for past sea levels (no correction for sediment, isostasy or tectonics).</span></p>
 </aside>
@@ -318,13 +312,13 @@ async function loadFire(){
   const raw=await inflate(g.f); FIRE={id:SC.id, g, K:g.K, f:new Uint16Array(raw.buffer, raw.byteOffset, raw.byteLength>>1)};
   const s=g.fires.map(x=>x[0]); FIRE.y0=s.reduce((m,v)=>v<m?v:m,9999); FIRE.y1=s.reduce((m,v)=>v>m?v:m,0);
 }
-// class of the most recent fire up to season `year`: 1 bushfire this season, 2 bushfire 1–5 y before, 3 6–20 y, 4 21–60 y, 5 planned burn ≤ 20 y; 0 none
+// class of the most recent fire up to season `year`: bushfire 1 ≤ 2 y before, 2 3–5 y, 3 6–20 y, 4 21–60 y; 5 planned burn ≤ 20 y; 0 none
 const FIRECOL=[-1,'red','orange','blorange','nougat','lavender'];
 function fireClasses(year){
   const out=new Uint8Array(N); if(!FIRE || FIRE.id!==SC.id) return out;
   const {K,f,g}=FIRE, fires=g.fires, ff=CELL/R, cnt=new Uint16Array(6);
   const cls=j=>{ for(let k=0;k<K;k++){ const id=f[j*K+k]; if(!id) return 0; const [s,t]=fires[id-1]; if(s>year) continue; const a=year-s;
-      if(t===1) return a<=20?5:0; return a===0?1 : a<=5?2 : a<=20?3 : a<=60?4 : 0; } return 0; };
+      if(t===1) return a<=20?5:0; return a<=2?1 : a<=5?2 : a<=20?3 : a<=60?4 : 0; } return 0; };
   for(let r=0;r<NY;r++)for(let c=0;c<NX;c++){ cnt.fill(0);
     for(let a=0;a<ff;a++)for(let b=0;b<ff;b++) cnt[cls((r*ff+a)*FX+c*ff+b)]++;
     if((ff*ff-cnt[0])*2 < ff*ff) continue; let bk=1; for(let k=2;k<6;k++) if(cnt[k]>cnt[bk]) bk=k; out[r*NX+c]=bk; }
@@ -344,7 +338,7 @@ async function loadGeo(){
   GEO={id:SC.id, g, su, bu, bs, K, col, cls, layerOf, layerCol:g.layers.map(ids=>col[ids[0]])};
 }
 const geoSub = () => !!(GEO && GEO.id===SC.id);                      // rock in walls and slices (default)
-const geoMap = () => geoSub() && state.geo && state.mode!=='fire';     // mapped unit on the top plate
+const geoMap = () => geoSub() && state.geo;     // mapped unit on the top plate
 function geoRes(){
   if(!GEO || GEO.id!==SC.id) return;
   const f=CELL/R, K=GEO.K, {su,bu,bs,g}=GEO; GSU=new Uint8Array(N); GBU=new Uint8Array(N); GB=new Float32Array(N*K);
@@ -468,7 +462,7 @@ const IDS = {
 };
 const KIND = {B:{h:3,name:'Brick'},P:{h:1,name:'Plate'},T:{h:1,name:'Tile'}};
 
-// o: {ve, snow, slr, bldg, geoMap, lgm, fireYear (null = no fire colouring)}
+// o: {ve, snow, slr, bldg, geoMap, lgm, fireYear (null = no fire markers; else classes relative to that season)}
 function build(o){
   const {ve}=o; let {snow,slr}=o; if(!BATHY) slr=Math.max(0,slr);
   const mPerPlate = 0.4*CELL/ve;                 // true scale: 3.2 mm plate × (CELL m / 8 mm stud) = 0.4·CELL m
@@ -518,7 +512,6 @@ function build(o){
     const Ht = H[i]-BP[i]-IP[i];
     if(IP[i]) return rock(i,z);                                                  // bedrock under the ice
     if(EXPO[i]) return z===Ht-1 ? expCol(i) : rock(i,z);
-    if(z===Ht-1 && FC && FC[i]) return C[FIRECOL[FC[i]]];
     if(GM){ if(z<BASE && z<Ht-1) return C.black; return z===Ht-1 ? (ISKIN[i]?C.white:GSU[i]?GEO.col[GSU[i]]:SURF[i]) : geoCol(i,z); }   // top plate = mapped unit
     const top = GS ? (FOREST[i]?2:1) : (FOREST[i]?3:2);
     if(z<BASE && z<Ht-top) return C.black;
@@ -552,7 +545,7 @@ function build(o){
   for(const p of parts){ if(p.k==='T') continue; const t=p.z+KIND[p.k].h;
     for(let yy=p.y;yy<p.y+p.d;yy++)for(let xx=p.x;xx<p.x+p.w;xx++){const j=yy*NX+xx;
       if(t===H[j]) studsTop.push({x:xx,y:yy,t,c:p.c}); else if(!SHELL) studsCut.push({x:xx,y:yy,t,c:p.c});}}
-  const canopy=[]; if(!GM) for(let i=0;i<N;i++) if(FOREST[i] && !BP[i] && !WET[i] && !IP[i] && !snowTop[i] && !(FC && FC[i]>0 && FC[i]<3) && NZ5[i]>0.5) canopy.push({x:i%NX,y:(i/NX)|0,t:H[i],c:(NZ5[i]>0.8?C.green:C.dkgreen)});
+  const canopy=[]; if(!GM) for(let i=0;i<N;i++) if(FOREST[i] && !BP[i] && !WET[i] && !IP[i] && !snowTop[i] && NZ5[i]>0.5) canopy.push({x:i%NX,y:(i/NX)|0,t:H[i],c:(NZ5[i]>0.8?C.green:C.dkgreen)});
   return {H,maxH,parts,studsTop,studsCut,canopy,mPerPlate,SHELL,hiddenEst:Math.round(hiddenPlates/24),WET,IP,ISKIN,FC,slr};
 }
 
@@ -605,8 +598,8 @@ const lakeId = name => { const i=(SC.data.lakes||[]).findIndex(n=>n.toUpperCase(
 
 function rebuild(){
   if(model){ scene.remove(model); model.traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); }
-  const fire = state.mode==='fire' && FIRE && FIRE.id===SC.id;
-  S=build({ve:state.ve, snow:state.snow && !fire, slr:fire?0:state.slr, bldg:state.bldg, geoMap:geoMap(), lgm:state.lgm && !fire, fireYear:fire?state.fireYear:null});
+  const fire = state.fire && FIRE && FIRE.id===SC.id;
+  S=build({ve:state.ve, snow:state.snow, slr:state.slr, bldg:state.bldg, geoMap:geoMap(), lgm:state.lgm, fireYear:fire?fireSeason():null});
   model=new THREE.Group(); scene.add(model);
   const groups={}, hidden=[];
   for(const p of S.parts){ if(!p.vis){hidden.push(p);continue;} const key=p.k+Math.min(p.w,p.d)+'x'+Math.max(p.w,p.d)+(p.c===WATER?'w':''); (groups[key]||(groups[key]=[])).push(p); }
@@ -631,6 +624,14 @@ function rebuild(){
     const roof=new THREE.Mesh(new THREE.ExtrudeGeometry(roofShape,{depth:7.8,bevelEnabled:false}),new THREE.MeshStandardMaterial({color:COL[C.dbg].hex,roughness:.32}));
     roof.position.set((bs.x+.5)*PITCH,(bsH+1)*PLATE,(bs.y+.5)*PITCH-3.9); shed.castShadow=roof.castShadow=true; model.add(shed,roof); S.shed=[shed,roof]; S.shedH=bsH;
     S.extraParts.push({k:'Plate 1x1 (boatshed)',id:'3024',c:C.rbrown,n:1},{k:'Slope 30 1x1x2/3 (roof)',id:'54200',c:C.dbg,n:1}); } }
+  // fire history: one round tile per burnt block, on the canopy plate where there is one, coloured by years since the fire
+  S.fireMesh=null;
+  if(S.FC){ const onCanopy=new Set(S.canopy.map(c=>c.y*NX+c.x)), marks=[];
+    for(let i=0;i<N;i++){ const k=S.FC[i]; if(!k||S.WET[i]||S.IP[i]) continue; const x=i%NX, y=(i/NX)|0;
+      marks.push({x,y,t:S.H[i],c:C[FIRECOL[k]],up:onCanopy.has(i)?PLATE:0}); }
+    S.fireMesh=inst(tileRoundGeo,plastic,marks,(m,M)=>M.makeTranslation((m.x+.5)*PITCH,m.t*PLATE+m.up,(m.y+.5)*PITCH)); S.fireMesh.castShadow=false; model.add(S.fireMesh);
+    const n={}; for(const m of marks) n[m.c]=(n[m.c]||0)+1;
+    for(const c in n) S.extraParts.push({k:'Tile, Round 1x1 (fire marker)',id:'98138',c:+c,n:n[c]}); }
   // water drops live in the model group, so any rebuild clears them
   S.drops=[]; S.route=null; S.basin=null; S.trail=null; S.dropMesh=null;
   if(state.mode==='water') prepWater();
@@ -728,13 +729,13 @@ function applyStep(k){
   cut.forEach((s,i)=>{tmpM.makeTranslation((s.x+.5)*PITCH,s.t*PLATE,(s.y+.5)*PITCH); S.cutMesh.setMatrixAt(i,tmpM); S.cutMesh.setColorAt(i,colour(s.c));});
   S.cutMesh.count=cut.length; S.cutMesh.instanceMatrix.needsUpdate=true; if(S.cutMesh.instanceColor) S.cutMesh.instanceColor.needsUpdate=true;
   S.shed.forEach(o=>o.visible=k>=S.shedH);
-  for(const o of [S.trail,S.dropMesh,S.basin]) if(o) o.visible=full;
+  for(const o of [S.trail,S.dropMesh,S.basin,S.fireMesh]) if(o) o.visible=full;
   document.getElementById('stepOut').textContent = full? 'complete' : `layer ${k+1} of ${stepMax+1} · ${(Z0+(k+1-BASE)*S.mPerPlate).toFixed(0)} m`;
   document.getElementById('labels').style.visibility = full&&state.labels ? 'visible':'hidden';
 }
 
 /* ================= UI ================= */
-const state={scene:'cradle',tier:2,res:100,ve:2,snow:true,labels:true,trees:true,bldg:true,geo:false,view:'hero',slr:0,mode:'land',lgm:false,fireYear:null};
+const state={scene:'cradle',tier:2,res:100,ve:2,snow:true,labels:true,trees:true,bldg:true,geo:false,view:'hero',slr:0,mode:'land',lgm:false,fire:false};
 // Phones and tablets: open at the coarsest resolution (users can still step up)
 const MOBILE = matchMedia("(pointer: coarse)").matches && Math.min(screen.width, screen.height) <= 820;
 if(MOBILE) state.tier=0;
@@ -753,32 +754,32 @@ function updateStats(){
   document.getElementById('scaleLine').textContent=`1 stud = ${CELL} m · 1 plate = ${mpp} m · horizontal 1:${fmt(CELL/0.008)}${state.ve>1?` · vertical ×${state.ve}`:' · true scale'} · ${(FX*R/1000).toFixed(1)} × ${(FY*R/1000).toFixed(1)} km`;
   document.getElementById('resNote').textContent=`${NX}×${NY} studs · ${(NX*PITCH/10).toFixed(0)}×${(NY*PITCH/10).toFixed(0)} cm`;
   document.getElementById('veNote').textContent=`1 plate = ${mpp} m`;
-  document.getElementById('bomNote').textContent=(S.SHELL?`Large grid: only the visible shell is packed (${fmt(total)} pieces); the hidden core would need ≈ ${fmt(S.hiddenEst)} 2×4-brick equivalents, or support pillars. Shell of the ${NX}×${NY}-stud build`:`${fmt(total)} pieces for a solid ${NX}×${NY}-stud build`)+` of ${SC.name} at ${state.ve}× vertical scale${S.slr!==0?`, sea level ${sgnM(S.slr)}`:''}${S.IP.some(v=>v)||S.ISKIN.some(v=>v)?', last-glaciation ice':''}${S.FC?`, fires to the ${season(state.fireYear)} season`:''}. Colour availability of each part has not been checked against current production.`;
+  document.getElementById('bomNote').textContent=(S.SHELL?`Large grid: only the visible shell is packed (${fmt(total)} pieces); the hidden core would need ≈ ${fmt(S.hiddenEst)} 2×4-brick equivalents, or support pillars. Shell of the ${NX}×${NY}-stud build`:`${fmt(total)} pieces for a solid ${NX}×${NY}-stud build`)+` of ${SC.name} at ${state.ve}× vertical scale${S.slr!==0?`, sea level ${sgnM(S.slr)}`:''}${S.IP.some(v=>v)||S.ISKIN.some(v=>v)?', last-glaciation ice':''}${S.FC?', fire-history markers':''}. Colour availability of each part has not been checked against current production.`;
   document.getElementById('bom').innerHTML=rows.map(r=>`<tr><td>${r.k}</td><td class="id">${r.id}</td><td><span style="display:inline-flex;gap:6px;align-items:center"><span class="sw" style="background:${hex(r.c)}"></span>${COL[r.c].n}</span></td><td class="n">${fmt(r.n)}</td></tr>`).join('');
   updateSlrReadout();
 }
 const LEG=[['dbg','Dolerite & cliffs (studded)'],['lbg','Talus & scree (studded)'],['olive','Alpine heath'],['sandgreen','Cushion plants'],['tan','Buttongrass & beach'],['dkgreen','Forest'],['white','Spring snow','snow'],['tdblue','Water (tiles)'],['lbg','Urban: residential (tiles)','urb'],['dbg','Urban: commercial & transport (tiles)','urb'],['white','Buildings < 9 m','bldg'],['lbg','Buildings 9–25 m','bldg'],['sandblue','Buildings ≥ 25 m','bldg']];
-const FIRELEG=[['red','Bushfire this season'],['orange','Bushfire 1–5 years before'],['blorange','Bushfire 6–20 years before'],['nougat','Bushfire 21–60 years before'],['lavender','Planned burn ≤ 20 years before']];
+const FIRELEG=[['red','Bushfire ≤ 2 years ago (round tile)'],['orange','Bushfire 3–5 years ago'],['blorange','Bushfire 6–20 years ago'],['nougat','Bushfire 21–60 years ago'],['lavender','Planned burn ≤ 20 years ago']];
 // rock colour groups (set by classify() in geology.py)
 const ROCKLEG=[['tan','Quaternary cover'],['blorange','Cenozoic sediments'],['dkbrown','Cenozoic basalt'],['dbg','Jurassic dolerite'],['nougat','Triassic sandstone & mudstone'],
   ['sandblue','Permian marine & glaciomarine rocks'],['dktan','Permian glacial conglomerate'],['pink','Devonian granite'],['olive','Silurian–Devonian rocks'],['mdblue','Ordovician rocks'],
   ['sandgreen','Cambrian rocks'],['white','Precambrian quartzite'],['lavender','Precambrian phyllite & schist'],['lbg','Other / unclassified']];
 const unitTxt = U => `${U.sym}: ${(U.desc||'').replace(/\.$/,'').slice(0,46)}`;
 function legend(){ if(!SC) return; let items=[];
-  const fire = state.mode==='fire' && FIRE && FIRE.id===SC.id;
-  if(fire) items.push(...FIRELEG);
+  const fire = state.fire && FIRE && FIRE.id===SC.id;
   if(geoMap()){ const n=new Map(); for(const v of GEO.su) if(v) n.set(v,(n.get(v)||0)+1);
     const seen=new Set();
     for(const [u] of [...n].sort((a,b)=>GEO.g.units[a[0]-1].minage-GEO.g.units[b[0]-1].minage)){ const U=GEO.g.units[u-1], key=U.col+U.sym; if(seen.has(key)) continue; seen.add(key);
       items.push([COL[GEO.col[u]].k, unitTxt(U)]); } }
-  else { const has={snow:state.snow&&!fire, urb:URB&&URB.some(v=>v), bldg:!!BLDF&&state.bldg}; items.push(...LEG.filter(([,,k])=>!k||has[k]).map(([c,t])=>[c,t])); }
-  if(state.lgm && !fire && ICET) items.push(['white','Glacier ice, last glaciation']);
-  if(BATHY){ items.push(['dkblue','Sea water column'],['tan','Sea floor']); if(state.slr<0 && !fire) items.push(['dktan','Sea floor exposed by lower sea']); }
+  else { const has={snow:state.snow, urb:URB&&URB.some(v=>v), bldg:!!BLDF&&state.bldg}; items.push(...LEG.filter(([,,k])=>!k||has[k]).map(([c,t])=>[c,t])); }
+  if(state.lgm && ICET) items.push(['white','Glacier ice, last glaciation']);
+  if(BATHY){ items.push(['dkblue','Sea water column'],['tan','Sea floor']); if(state.slr<0) items.push(['dktan','Sea floor exposed by lower sea']); }
   if(state.mode==='water') items.push(['mdblue','Raindrop and its path (round tiles)'],['red','Catchment outline']);
   if(geoSub() && !geoMap()){   // rock in the walls: one entry per colour (age group), youngest first
     const used=new Set(); GEO.g.layers.forEach(ids=>ids.forEach(u=>used.add(COL[GEO.col[u]].k))); for(const v of GBU) if(v) used.add(COL[GEO.col[v]].k);
     for(const [k,t] of ROCKLEG) if(used.has(k)) items.push([k,'Rock · '+t]); }
   else if(!geoMap()) items.push(['rbrown','Soil walls']);
+  if(fire) items.push(...FIRELEG);
   items.push(['black','Base plate']);
   document.getElementById('legend').innerHTML=items.map(([k,t])=>`<div><span class="sw" style="background:${hex(C[k])}"></span>${t}</div>`).join(''); }
 
@@ -845,7 +846,7 @@ function slrArea(slr){ // native-resolution area (km²) for the readout: land fl
   if(slr<0 && BATHY){ const W=seaWet(slr, DEMF, LAKEF, FX, FY); let n=0; for(let i=0;i<W.length;i++) if(LAKEF[i]===SEA&&!W[i]) n++; return n*R*R/1e6; }
   return 0; }
 function updateSlrReadout(){
-  const box=document.getElementById('slrBox'), note=document.getElementById('slrNote'); const coastal=!!SC.data.sea && state.mode!=='fire'; box.hidden=!coastal; note.hidden=!coastal;
+  const box=document.getElementById('slrBox'), note=document.getElementById('slrNote'); const coastal=!!SC.data.sea; box.hidden=!coastal; note.hidden=!coastal;
   document.getElementById('bathyNote').hidden=!BATHY; if(!coastal) return;
   document.getElementById('slrOut').textContent = sgnM(state.slr);
   const km=slrArea(state.slr), f=km.toFixed(km<1?2:km<100?1:0);
@@ -859,39 +860,29 @@ document.getElementById('slrMarks').addEventListener('click',e=>{const b=e.targe
 // ---- modes: Landscape | Bushfire | Water drop
 const $=id=>document.getElementById(id);
 function modeUI(){
-  const m=state.mode, fire=m==='fire';
+  const m=state.mode;
   pressGroup($('modes'), document.querySelector(`#modes [data-m="${m}"]`));
-  const fb=document.querySelector('#modes [data-m="fire"]'); fb.disabled=!SC.data.fire; fb.title=SC.data.fire?'Mapped fire history':'No fire history prepared for this scene yet';
-  $('fireBox').hidden=!fire; $('fireNote').hidden=!fire; $('waterBox').hidden=m!=='water'; $('waterNote').hidden=m!=='water';
-  $('snow').hidden=fire; $('lgmT').hidden=fire || !(SC.data.ice||BATHY); $('geoT').hidden=fire || !geoSub();
-  $('lgmNote').hidden=fire || !state.lgm || !(SC.data.ice||BATHY);
+  $('waterBox').hidden=m!=='water'; $('waterNote').hidden=m!=='water';
+  $('lgmT').hidden=!(SC.data.ice||BATHY); $('geoT').hidden=!geoSub(); $('fireT').hidden=!SC.data.fire;
+  $('lgmNote').hidden=!state.lgm || !(SC.data.ice||BATHY);
+  const fire = state.fire && FIRE && FIRE.id===SC.id; $('fireNote').hidden=!fire;
+  if(fire){ const fs=FIRE.g.fires, last=fs.reduce((a,f)=>f[0]>a[0]?f:a, fs[0]);
+    $('fireSum').textContent=`${fs.length} fires mapped in this scene since ${FIRE.y0}; the most recent is ${last[2]||'unnamed'} (${FTYPE[last[1]]}, ${season(last[0])}).`; }
   $('lgmSea').textContent = BATHY ? 'Sea level is set to −120 m, about the level around Tasmania at the Last Glacial Maximum (~21 ka; global estimates −120 to −134 m, Lambeck et al. 2014).' : '';
   $('geoNote').hidden=!geoSub();
   const wb=document.querySelector('#modes [data-m="water"]'); wb.disabled=!AVAIL.has('tasmania'); wb.title='Runs on the All of Tasmania scene';
-  $('modeNote').textContent = fire&&FIRE ? `${FIRE.g.fires.length} mapped fires` : '';
-  if(fire && FIRE){ const y=$('fireYear'); y.min=FIRE.y0; y.max=FIRE.y1; y.value=state.fireYear; }
   updateSlrReadout(); }
 const season = y => `${y}–${String((y+1)%100).padStart(2,'0')}`;
+// the current fire season (July–June), named by its starting year
+const fireSeason = () => { const d=new Date(); return d.getMonth()>=6 ? d.getFullYear() : d.getFullYear()-1; };
 const FTYPE=['bushfire','planned burn','fire of unknown type'];
 function modeReadout(){
-  if(state.mode==='fire' && FIRE){ const y=state.fireYear, fs=FIRE.g.fires.filter(f=>f[0]===y).sort((a,b)=>b[3]-a[3]);
-    $('fireOut').textContent=season(y);
-    $('fireRead').innerHTML = fs.length ? `<b>${fs.length}</b> fire${fs.length>1?'s':''} mapped here in ${season(y)}: `+fs.slice(0,3).map(f=>`${f[2]||'unnamed'} (${FTYPE[f[1]]}, <b>${f[3].toFixed(f[3]<1?2:1)} km²</b>)`).join('; ')+(fs.length>3?`; and ${fs.length-3} more`:'')+'.'
-      : `No fires mapped here in ${season(y)}. Colours show the most recent fire before it.`; }
   if(state.mode==='water') waterSay('Tap the land to release a raindrop. It runs downhill to the sea, or to the edge of the model.'); }
 function waterSay(h){ $('waterRead').innerHTML=h; }
-$('modes').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b||b.disabled||b.dataset.m===state.mode) return; stopPlay();
+$('modes').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b||b.disabled||b.dataset.m===state.mode) return;
   state.mode=b.dataset.m;
   if(state.mode==='water' && SC.id!=='tasmania'){ const t=scenesEl.querySelector('[data-s="tasmania"]'); if(t){ t.click(); return; } }   // water drop runs statewide
-  heavy(async()=>{ if(state.mode==='fire'){ await loadFire(); if(state.fireYear==null||state.fireYear<FIRE.y0||state.fireYear>FIRE.y1) state.fireYear=FIRE.y1; } modeUI(); rebuild(); legend(); }); });
-let fireTimer=null;
-$('fireYear').addEventListener('input',e=>{ state.fireYear=+e.target.value; $('fireOut').textContent=season(state.fireYear); clearTimeout(fireTimer); fireTimer=setTimeout(()=>heavy(rebuild),200); });
-let playing=false;
-function stopPlay(){ playing=false; $('firePlay').textContent='▶ Play'; }
-$('firePlay').addEventListener('click',async()=>{ if(playing){ stopPlay(); return; } playing=true; $('firePlay').textContent='■ Stop';
-  if(state.fireYear>=FIRE.y1) state.fireYear=FIRE.y0-1;
-  while(playing && state.fireYear<FIRE.y1){ state.fireYear++; $('fireYear').value=state.fireYear; rebuild(); await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,280))); }
-  stopPlay(); });
+  heavy(()=>{ modeUI(); rebuild(); legend(); }); });
 $('dropClear').addEventListener('click',()=>{ clearDrops(); modeReadout(); });
 { let down=null; const cv=renderer.domElement;
   cv.addEventListener('pointerdown',e=>{ down={x:e.clientX,y:e.clientY,t:performance.now()}; });
@@ -921,6 +912,7 @@ tog('labelsT','labels',()=>applyStep(+document.getElementById('step').value));
 // Canopy and Geology map are exclusive: the map replaces the vegetation plate; switching either on switches the other off
 const setTog=(id,key,v)=>{ state[key]=v; $(id).setAttribute('aria-pressed',v); };
 tog('trees','trees',()=>{ if(state.trees && state.geo){ setTog('geoT','geo',false); heavy(()=>{ rebuild(); legend(); }); } else S.canopyMesh.visible=state.trees; });
+tog('fireT','fire',()=>heavy(async()=>{ if(state.fire){ try{ await loadFire(); }catch(e){ console.warn(e); state.fire=false; $('fireT').setAttribute('aria-pressed',false); } } rebuild(); legend(); modeUI(); }));
 tog('bldgT','bldg',()=>heavy(()=>{rebuild(); legend();}));
 tog('geoT','geo',()=>{ setTog('trees','trees',!state.geo); heavy(()=>{ rebuild(); legend(); }); });
 document.getElementById('step').addEventListener('input',e=>applyStep(+e.target.value));
@@ -934,7 +926,7 @@ col.addEventListener('click',()=>{const c=panel.classList.toggle('collapsed'); c
 if(matchMedia('(max-width:720px)').matches){panel.classList.add('collapsed'); col.textContent='Show controls';}
 
 async function openScene(id){
-  stopPlay(); await loadScene(id);
+  await loadScene(id);
   // resolution: keep the current one when switching scenes if this scene offers it; on first load use the
   // scene's res0 (desktop) or the coarsest tier (phones)
   { const opts=resOpts(); state.res = opts.includes(state.res) && state.loaded ? state.res : (!MOBILE && opts.includes(SC.res0) ? SC.res0 : opts[Math.min(state.tier||0, opts.length-1)]);
@@ -943,16 +935,14 @@ async function openScene(id){
   pressGroup(document.getElementById('views'), document.getElementById('heroBtn'));
   document.getElementById('heroBtn').textContent=SC.hero.label;
   document.getElementById('bldgT').hidden=!BLDF; document.getElementById('bldgNote').hidden=!BLDF;
-  // optional layers: geology (always shown in walls when prepared), ice (with the Ice age toggle), fire (Bushfire mode)
+  // optional layers: geology (always shown in walls when prepared), ice (Ice age toggle), fire (Fire history toggle)
   const opt = async (flag, fn) => { if(!flag) return; try{ await fn(); }catch(e){ console.warn(e); } };
   await opt(SC.data.geo, loadGeo);
   await opt(SC.data.ice && state.lgm, loadIce);
-  if(state.mode==='fire' && !SC.data.fire) state.mode='land';
   if(state.mode==='water' && id!=='tasmania') state.mode='land';
-  await opt(state.mode==='fire', loadFire);
-  if(state.mode==='fire' && FIRE && (state.fireYear==null || state.fireYear<FIRE.y0 || state.fireYear>FIRE.y1)) state.fireYear=FIRE.y1;
+  await opt(SC.data.fire && state.fire, loadFire);
   state.slr = state.lgm && BATHY ? LGM_SL : 0; slrMarks();
-  $('geoT').setAttribute('aria-pressed',!!state.geo); $('lgmT').setAttribute('aria-pressed',!!state.lgm);
+  $('geoT').setAttribute('aria-pressed',!!state.geo); $('lgmT').setAttribute('aria-pressed',!!state.lgm); $('fireT').setAttribute('aria-pressed',!!state.fire);
   document.getElementById('title').textContent=SC.name;
   document.getElementById('region').textContent=SC.region;
   document.getElementById('blurb').textContent=SC.blurb;

@@ -62,7 +62,8 @@ scene's data/<id>.json carries the flag (`geo`, `bathy`, `ice`, `fire`), and fal
 * **Ice age** toggle (Landscape): ice plates from the mapped glacier outlines, thickness from perfectly plastic
   ice (tau = 100 kPa, `--tau`) built inwards from the margin on the present ground; sea at -120 m where the
   scene has sea floor.
-* **Bushfire** mode: top plate coloured by the most recent fire up to the chosen season (slider, Play).
+* **Fire history** toggle (Landscape): round tiles on burnt blocks, on the canopy where present, coloured by years
+  since the most recent fire before the current season (bushfires to 60 years, planned burns to 20).
 * **Water drop** mode: tap to release a drop; D8 steepest descent on a Priority-Flood + epsilon filled surface
   of the model's block heights; outlets are the sea and the model edge; the outlet's catchment is outlined in red.
   Statewide scene only (the mode button opens it). `?debug` in the URL exposes `window.__tb` for testing.
