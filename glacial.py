@@ -4,7 +4,7 @@ glacial.py - last-glaciation ice for Tasmania in Bricks.
 
 Outlines: GLACIMONTIS, empirically reconstructed palaeoglaciers (Zenodo record 15600659, CC BY 4.0), layer
 EmpiricallyReconstructedPaleoglaciers, records with mrange2 = 'Australia' south of N 5 700 000 (MGA55), i.e. the
-Tasmanian reconstructions (Colhoun & Barrows 2001; Barrows et al. 2001, 2002; Mackintosh et al. 2006), ~44-20 ka.
+Tasmanian reconstructions (Colhoun & Barrows 2001; Barrows et al. 2002; Mackintosh et al. 2006).
 
 Thickness is not mapped, so it is modelled: perfectly plastic ice (Nye 1952) with basal shear stress tau on today's
 ground (the bed), built inwards from the mapped margin. Along a flow line  dS/dx = tau / (rho g H),  H = S - B.
