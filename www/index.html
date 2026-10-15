@@ -19,6 +19,8 @@ body{background:var(--ground);color:var(--ink);font-family:var(--body);overflow:
 #stage{position:fixed;inset:0;background:radial-gradient(120% 90% at 50% 20%,var(--ground) 0%,var(--ground2) 100%)}
 #stage canvas{display:block;width:100%;height:100%;touch-action:none}
 .head{position:fixed;left:16px;top:calc(14px + env(safe-area-inset-top,0px));pointer-events:none;max-width:min(520px,calc(100% - 32px))}
+.head .logo{display:inline-block;pointer-events:auto;margin:0 0 10px}
+.head .logo img{display:block;height:34px;width:auto}
 .head h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4.2vw,44px);letter-spacing:.01em;line-height:.95;margin:0;text-transform:uppercase;text-wrap:balance}
 .head p{margin:6px 0 0;font-size:13px;color:var(--ink2);line-height:1.45}
 .head .scale{font-family:var(--mono);font-size:11.5px;color:var(--ink2);margin-top:6px;letter-spacing:.02em}
@@ -66,7 +68,7 @@ td.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
 td.id{font-family:var(--mono);color:var(--ink2)}
 .panel .toggle{display:none}
 @media (max-width:720px){
-  .head h1{font-size:26px}.head p{display:none}
+  .head h1{font-size:26px}.head p{display:none}.head .logo img{height:24px}.head .logo{margin-bottom:6px}
   .panel{left:16px;right:16px;top:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px));width:auto;max-height:52%}
   .panel.collapsed>*:not(.toggle){display:none}
   .panel .toggle{display:block}
@@ -89,6 +91,11 @@ td.id{font-family:var(--mono);color:var(--ink2)}
 .slr .marks button:focus-visible{outline:2px solid var(--focus)}
 .slr .readout{font-family:var(--mono);font-size:11.5px;color:var(--ink2);font-variant-numeric:tabular-nums}
 .slr .warn{font-size:11px;color:#B2541C}
+.seg button:disabled{opacity:.38;cursor:not-allowed}
+.modebox{border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.modebox .readout{font-size:12px;line-height:1.45;color:var(--ink)}
+.modebox .readout b{font-family:var(--mono);font-weight:500}
+.modebox .row .btn{padding:5px 10px;font-size:12px}
 .head .sub{font-family:var(--display);font-weight:500;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-top:2px}
 </style>
 
@@ -97,6 +104,7 @@ td.id{font-family:var(--mono);color:var(--ink2)}
 <div id="busy">Sorting bricks…</div>
 
 <div class="head">
+  <a class="logo" href="https://www.utas.edu.au" target="_blank" rel="noopener"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MzAuNDggMTMyLjQyIj48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2U0MjMxMzt9PC9zdHlsZT48L2RlZnM+PGcgaWQ9IkxheWVyXzIiIGRhdGEtbmFtZT0iTGF5ZXIgMiI+PGcgaWQ9IkxheWVyXzEtMiIgZGF0YS1uYW1lPSJMYXllciAxIj48cGF0aCBkPSJNNS41Nyw1LjQ4aDUuMnYyNmMwLDguODcsNS4yLDEyLjQ5LDEyLDEyLjQ5UzM0LjY2LDQwLjI3LDM0LjY2LDMxLjlWNS40OGg1LjJWMzEuNjVjMCwxMS03LjczLDE2Ljg2LTE3LjE4LDE2Ljg2cy0xNy4xMS00LjQ0LTE3LjExLTE2WiIvPjxwYXRoIGQ9Ik01OC4wNSw1LjQ4aDUuMTlMODcuODksNDBWNS40OEg5M1Y0Ny43NUg4Ny43N2wtMjQuNjUtMzR2MzRINTguMDVaIi8+PHBhdGggZD0iTTExMS43Miw1LjQ4aDUuMlY0Ny43NWgtNS4yVjUuNDhaIi8+PHBhdGggZD0iTTEzMC4zNiw1LjQ4aDUuNTFsMTIuMzYsMzQuOTFMMTYwLjU4LDUuNDhoNS4zM0wxNTAuNjMsNDguMDZoLTUuMDZaIi8+PHBhdGggZD0iTTE3OS4zNCw1LjQ4aDI0LjkxVjkuODVIMTg0LjU0VjI0aDE1LjU5djQuMzdIMTg0LjU0djE1aDE5LjY0djQuMzhIMTc5LjM0WiIvPjxwYXRoIGQ9Ik0yMjAsNS40OGgxMS4wOUMyNDIsNS40OCwyNDYuMiwxMS4wNSwyNDYuMiwxN2MwLDYuMTUtNC41NiwxMC04Ljc0LDExLjg1bDEyLjgsMTguODloLTYuMTVMMjMyLDI5Ljk0aC02Ljc4VjQ3Ljc1SDIyMFptMTEuODUsMjAuMDljNC4wNiwwLDguNzQtMi43OSw4Ljc0LTgsMC00LTIuNzItNy42Ny0xMC40NS03LjY3aC00Ljk0VjI1LjU3WiIvPjxwYXRoIGQ9Ik0yNjIuMjQsNDAuMDhhMjAsMjAsMCwwLDAsMTEsMy44YzQuNTcsMCw4LjQzLTIuMDksOC40My02LjE1LDAtOS42My0yMC4wOS05LjA2LTIwLjA5LTIyLDAtNi4xNCw0Ljk1LTExLDEzLjc1LTExYTM1LjYzLDM1LjYzLDAsMCwxLDEwLjc4LDEuOUwyODQuOCwxMS41YTI2LjI4LDI2LjI4LDAsMCwwLTkuNjQtMi4xNmMtNC42OSwwLTguMywyLTguMyw1LjgzQzI2Ni44NiwyNSwyODcsMjMuOTIsMjg3LDM3LjM1YzAsNy4zNS02LjI3LDExLjE2LTEzLjg4LDExLjE2QTIyLjM3LDIyLjM3LDAsMCwxLDI2MC44NCw0NVoiLz48cGF0aCBkPSJNMzAyLjYsNS40OGg1LjJWNDcuNzVoLTUuMlY1LjQ4WiIvPjxwYXRoIGQ9Ik0zMzYuMzgsOS44NUgzMjEuNDNWNS40OGgzNS4zNlY5Ljg1SDM0MS41OHYzNy45aC01LjJaIi8+PHBhdGggZD0iTTM3OS44NiwyOS4zNywzNjQuNzEsNS40OGg2LjE1TDM4Mi41MiwyNC4zLDM5NC4zLDUuNDhoNS44M0wzODUuMDUsMjkuM1Y0Ny43NWgtNS4xOVoiLz48cGF0aCBkPSJNMTgsNzYuNjhIMFY2Ny44M0g0Ni40NHY4Ljg1SDI4LjV2NDUuNzlIMThaIi8+PHBhdGggZD0iTTcyLjgxLDY3LjQySDgyLjg5bDIwLjU2LDU1LjA1SDkyLjcybC00LjQzLTEyLjI5SDY3LjE2bC00LjQyLDEyLjI5SDUyLjI1Wm0tMi41NCwzNEg4NS4xTDc3LjczLDgwLjc3WiIvPjxwYXRoIGQ9Ik0xMTguMjcsMTA5LjUyczUuOSw0LjkyLDEzLjUxLDQuNzZjNC41OSwwLDguNi0yLDguNi01LjgyLDAtOS44My0yNC4zMi05LjUtMjQuMzItMjYsMC04LjM1LDYuODgtMTUuNjQsMTguODQtMTUuNjRhNTIuMiw1Mi4yLDAsMCwxLDE0LjgyLDIuNDZMMTQ4LDc4LjgxQTM3LjA4LDM3LjA4LDAsMCwwLDEzNS4wNiw3NmMtNC42NywwLTguMzUsMS44OS04LjM1LDUuNDEsMCw5LjkxLDI0LjI0LDksMjQuMjQsMjYuMjEsMCw5LjkxLTguNTIsMTUuODEtMTksMTUuODFhMzIuMywzMi4zLDAsMCwxLTE2LjcxLTQuNTlaIi8+PHBhdGggZD0iTTE3MC4yOCw2Ny44M2gxNS4xNWwxMy4xOSwzNy45M0wyMTEuOCw2Ny44M2gxNC45MWwyLDU0LjY0SDIxOC40NGwtMS41Ni00Mi43Ni0xNS4xNSw0Mi43NmgtNi44OGwtMTUtNDIuNjgtMS4zOSw0Mi42OEgxNjguMzFaIi8+PHBhdGggZD0iTTI2My42NSw2Ny40MmgxMC4wN2wyMC41Niw1NS4wNUgyODMuNTVsLTQuNDItMTIuMjlIMjU4bC00LjQyLDEyLjI5SDI0My4wOVptLTIuNTQsMzRoMTQuODJsLTcuMzctMjAuNjVaIi8+PHBhdGggZD0iTTMwOS42Nyw2Ny44M2gxMC42NWwyNi42MiwzOC41VjY3LjgzaDEwLjMydjU0LjY0SDM0Ni41M0wzMjAsODQuMjF2MzguMjZIMzA5LjY3WiIvPjxwYXRoIGQ9Ik0zNzksNjcuODNoMTAuNTd2NTQuNjRIMzc5VjY3LjgzWiIvPjxwYXRoIGQ9Ik00MjUuNTcsNjcuNDJoMTAuMDdsMjAuNTYsNTUuMDVINDQ1LjQ3bC00LjQyLTEyLjI5SDQxOS45MmwtNC40MywxMi4yOUg0MDVabS0yLjU0LDM0aDE0LjgybC03LjM3LTIwLjY1WiIvPjxwYXRoIGQ9Ik00MjMuOTQsMTcuMzdjNS45LDAsOC44MSw0LjY0LDguODEsOS4zNywwLDYtNC43OSwxNC43Ny0xMywxNC43Ny01LjksMC04Ljc2LTQuNjMtOC43Ni05LjczQzQxMSwyNC43Niw0MTYuNDUsMTcuMzcsNDIzLjk0LDE3LjM3Wk00MjAuMDcsMzguMmM1LjM1LDAsOC42LTYuMTEsOC42LTExLjMsMC0zLjUyLTEuNDctNi4yMi00Ljk0LTYuMjItNC42OCwwLTguNjUsNC43NC04LjY1LDExQzQxNS4wOCwzNS40NSw0MTYuNTYsMzguMiw0MjAuMDcsMzguMloiLz48cGF0aCBkPSJNNDM3LjQzLDE5LjEsNDQxLDE3Ljc4bC4xNS0xLjEyYy43Ny02LDMuMjYtMTIuODMsMTAuNzUtMTIuODNhMTAuNzcsMTAuNzcsMCwwLDEsNS42NSwxLjM3bC0xLjczLDMuMDZhOC44MSw4LjgxLDAsMCwwLTMuOTItMS4wN2MtNS4xLDAtNi4zMiw1LjMtNy4xOCwxMC43OWg2LjE2bC0uNzIsMy4yMWgtNS45Yy0xLjUzLDEyLjM4LTMuMjEsMjkuMDgtMTIuNDMsMzEuNzhsLTEuNTgtMi43YzUuNzEtMS45NCw4LjEtMTIsOS4zMi0yMS4zNGwxLTcuNzRoLTMuMTFaIi8+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJNNTIyLjk0LDE2LjM5Yy0uNzQsMC0yLjMxLjEzLTMuMzIuMTVhNC44MSw0LjgxLDAsMCwxLTEuODUtLjM5LjQyLjQyLDAsMCwwLS41NS40MWwtLjA2LDIuMjFhMS4wNSwxLjA1LDAsMCwwLC44NSwxYzEuNzIuNCwzLjc2LjE2LDYuNTEtMi43LjQ5LS41Mi0xLS42Ni0xLjU4LS42NCIvPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTYzMC40MiwzMGEuMTUuMTUsMCwwLDAsMC0uMjFjLTQuNjYtNC45NS0yNS40OC0yLjQ2LTMzLjU1LTEuNTUtMTAsMS4xMy0xOC4yMSwyLjI0LTIwLjY5LDIuMzctMi43MS4xNC04LjI1LjUyLTExLjQ0LTEtMy42My0xLjc3LTQuNjYtMy4wOS00Ljk0LTQuODktLjgyLTUuMjYsMy43OC01LjM5LDUuMjMtNS40MXMzLjUsMCwzLjM1LDIuMDVjLS4wOSwxLjM3LTEuMjcsMi0yLjQ2LDIuNTlhLjE0LjE0LDAsMCwwLDAsLjIzYy42Ny41NywzLjI2LDIuNiw2LjIsMi4zOSwzLjQxLS4yNSw1LjczLS45Miw3LjI1LTYuNTVhLjEyLjEyLDAsMCwxLC4xNi0uMDlBMTA1LjE2LDEwNS4xNiwwLDAsMCw1OTEsMjMuNjdjMy4wOC42Nyw3Ljc4Ljc3LDExLTEuMTFzNy44NS00LjY5LDEzLjA5LTQuNDJjNC41OS4yNCw5Ljg4LjMzLDEzLDIuMTJhLjEyLjEyLDAsMCwwLC4xOC0uMTVjLS42My0yLjEtNC44My0xMy43Mi0xOC43OS0xMC40OWgwYy0zLjUxLDEtNCwxLjgzLTYuOCwyLjM0YTM2LDM2LDAsMCwxLTE1LjA2LS43Mi4xNS4xNSwwLDAsMSwwLS4yN2MxLjgtMSwxMS4xMi01Ljc2LDIxLjM3LTRhLjE0LjE0LDAsMCwwLC4xMy0uMjJjLTEtMS4zMy01LjYzLTctMTMuMy02LjczQzU4NywuMzQsNTg1LDIuMjksNTc5LjQ3LDUuMjNjLTUuMTEsMi43NC03LjI4LDQuNDctMTYsNC01LjQyLS4yOS0xMS4yMyw0LTEyLjM3LDcuMzUtNS4wOSwxNC44NSw2LDIwLjczLDE1LjYsMjIuMjUsOSwxLjQyLDQwLjIxLTUsNDcuNi0xLjYzLDMuNCwxLjUzLDUuMzgsNC43MSw1LjI1LDcuNDQtLjA3LDEuMjgtMS41NCwzLjUxLTUuNzksNC40NGE1Ni44NCw1Ni44NCwwLDAsMS0yMi0uNTdoMGMtLjE4LS4xLTcuNjQtNC4yNy0xMy4zNy00LjYzQzU3NCw0My42MSw1NjMuMDUsNDYsNTU5LjYyLDQ2Yy0yLjQyLjA1LTcuMDYuMzItOS41Ny40OC4xMi0xMS4yMS02LTIwLjM5LTYuMjctMjAuODlhMS4yNCwxLjI0LDAsMCwwLTEuODEtLjM3cy0uOC4zNy0yLjI3LDEuMWMxLjYyLTMuMTgsMS4yNS03LjI5LS4yOC04LjlhLjI1LjI1LDAsMCwxLDAtLjM0LDYuNjcsNi42NywwLDAsMCwxLjM5LTMuNDljLjA4LTIuNjMtLjQ1LTUuOTQtNi42My05LjNhLjc0Ljc0LDAsMCwwLTEuMDYuMzhjLS41MiwxLjI3LTEuNjQsMy42NS0yLjcxLDMuNzMtMi4zMy4xOS05LjM0LDEuNzItMTEuMTIsMi42NmExMy44LDEzLjgsMCwwLDAtNSw0LjA5LDYuMTksNi4xOSwwLDAsMS00LjE5LDIuOWMtMS44LjQtMi41My4wNS0zLjA2LjZhMi4yMSwyLjIxLDAsMCwwLS42OCwyLjIsMzMuNDEsMzMuNDEsMCwwLDAsMi40Miw1LjM1LDkuNjEsOS42MSwwLDAsMCwyLjQ5LDIuOTRsLTIuMzYsMGMtLjY2LDAtMi4wNy0uMTQtMi4wOS0uMTRhLjcyLjcyLDAsMCwwLS43MS40Ljg0Ljg0LDAsMCwwLC4wOC44NWMuNjYuODQsMS41MywxLjY2LDQuMywxLjY2aC4yN0w1MTMsMzJjLS4zMy40LS42Ny44My0uODUsMS4wN2EzLjgzLDMuODMsMCwwLDAtLjY2LDQuNDIsNi4zNyw2LjM3LDAsMCwwLDIuMTksMi43MWMxLjYxLTEuMTQsNS4wOC0yLjY3LDYuNTItMS42NGwtLjg0LjkyYy0yLjkyLDMuMTktNi43Niw3LjE5LTguOTMsMTIuMjEtMi42NS0xLTkuMTgtMy41NS0xMi4yMi02LjVhNiw2LDAsMCwxLTEuMTctNS4yNSw3LjMzLDcuMzMsMCwwLDAtLjMxLTUuOTNjLTEuMDktMi40NC00LjMxLTQuODQtNC4zMS00Ljg0LjQyLTIuOTEsMS02Ljc4LDEuMjEtNy45NSwyLjY5LjI3LDUuMjktLjQyLDYuMTUtMS43M3MxLjEzLTMuODksMS41Ny00LjQ5LDEuMzctLjM3LDEuOTEtLjQyQTYuMjcsNi4yNywwLDAsMCw1MDcuNDQsMTNjMS42My0xLjQ5LDIuOC0zLjYxLDQuMi0zLjgxYTcuMjIsNy4yMiwwLDAsMCw0LjA5LTEuNzRjMS4xOS0xLDMuNzItNC4wNSw4LjMxLTMuOTUsMS4yNywwLDItMS4zLS40LTEuODFhMTYuNywxNi43LDAsMCwwLTguNzEuNjVjLTIuNjEsMS0zLjY1LjEtNC43Ni0uMjQtMS43Mi0uNTEtMy40LS4zNS01LjkxLjYxLTIuMDguODEtNS44NSwxLjMzLTgsLjYzYTE1LjY5LDE1LjY5LDAsMCwwLTkuNjktLjVjLTMuNTEuODQtNS45MiwyLjc3LTcuMDUsNS42OWE3LjA2LDcuMDYsMCwwLDAsMCw1LjMxLDkuMzIsOS4zMiwwLDAsMCwuODgsMS41NGMtLjExLDIuMy0uNDMsOS44OS0uNDUsMTAuNzdhNS43OSw1Ljc5LDAsMCwwLS43NCwyLDMuNDEsMy40MSwwLDAsMC0uMDYsMS4xaC0uNGEzLjgzLDMuODMsMCwwLDAtMi4zNCwxLjE0bC0uMjUuMjUtLjIxLjI5YTQuMTQsNC4xNCwwLDAsMC0uMzYuNmwtLjI4LjYyYTUuMSw1LjEsMCwwLDAtLjIxLjc1LDQuMTIsNC4xMiwwLDAsMCwwLDEuNjQsNC43NCw0Ljc0LDAsMCwwLC41NiwxLjM3LDYsNiwwLDAsMCwxLjM3LDEuNTEsNC4xMSw0LjExLDAsMCwwLS41Ny43Miw0LjYxLDQuNjEsMCwwLDAtLjczLDIuMTMsNC4wNyw0LjA3LDAsMCwwLC41OSwyLjMzQTUuNTYsNS41NiwwLDAsMCw0NzcuNjEsNDQsMTEuMiwxMS4yLDAsMCwwLDQ3OSw0NWMtMS4xMSwzMS4yNy0xLjIsMzIuNTQsMi4wNSwzMy41NGExLjE3LDEuMTcsMCwwLDAsLjM3LDBjMy43OCwwLDQuODItOC40Miw3LTIzLC4zMi0yLjExLjU1LTQsLjgxLTUuNjIsMi42OSw1LDguNzksMTUuNDIsMTcuNjUsMjMuNDhhLjg1Ljg1LDAsMCwwLDEuMzktLjQ3YzEtNC4wOCwxLjcxLTUuNDksMi4xLTYuMTVBMjkuMjQsMjkuMjQsMCwwLDAsNTEyLjgsNzFhMzMuNjgsMzMuNjgsMCwwLDAsNC41MSw1bDAsMGMtMi42OCwyLjU3LTkuMzcsOC40Ni0xNi4yNSwxMC41NWEuMTIuMTIsMCwwLDEtLjE1LS4wN0ExNi4xMSwxNi4xMSwwLDAsMCw0OTgsODEuOWMtMS42NS0xLjU1LTMuMDUtMy4xNy05LjQyLTEuODRBMjIuNjEsMjIuNjEsMCwwLDAsNDg1LDgxLjIzYS44MS44MSwwLDAsMCwuMjUsMS41NCwxMC40MywxMC40MywwLDAsMSwxLjgyLjIuMTIuMTIsMCwwLDEsLjA4LjE0LDQuMDgsNC4wOCwwLDAsMCwuNTEsMi42OS4xNC4xNCwwLDAsMSwwLC4xOGMtLjczLjUzLTUuMTMsNC00LjMxLDExLjIyYS40NC40NCwwLDAsMCwuODYuMTIsMTkuNTEsMTkuNTEsMCwwLDEsLjc0LTJjLjM2LjY1LDIsMy4yOSw0LjU0LDMuNjdhLjEzLjEzLDAsMCwxLC4xLjE1LDEyLjEzLDEyLjEzLDAsMCwwLDIuNjUsOC43OS42MS42MSwwLDAsMCwxLjA3LS40Nyw4LDgsMCwwLDEsMC0xLjU1LjEzLjEzLDAsMCwxLC4yLS4xLDIuODMsMi44MywwLDAsMCwzLjI2LS4xOSwxNywxNywwLDAsMCw0LjczLTUuMi4xMy4xMywwLDAsMSwuMjEsMGMxLjE2LDEuNDgsMywxLjYsNS4wNiwxLjYsMy41LDAsNi4zOS0xLjg1LDYuMzktNS4zLDAtLjA4LDAtLjE2LDAtLjI1LDcuODUuNzksMTIuNjUtMS4wNSwxOC43NC00LjkyLDUuNTktMy41NSw4LjQzLTYsOC05LjE3YTYuNDksNi40OSwwLDAsMC0xLjgtMy44NywxOS41MiwxOS41MiwwLDAsMCwxNi40NC05LjYxYy4wOC0uMTQuMjcsMCwuMjMuMTEtLjYxLDIuNy0uNjcsNy43NS43OCwxMC40NSwyLjE2LDQsNy40LDEwLjA2LDguMTcsMTIuNTlzLjcsOC45MS0yLjEzLDEyLjQyLTMuNTIsNC01LjYsNS4zMmEuMTEuMTEsMCwwLDEtLjE0LDBjLS41NC0uNDctNC4yNy0zLjczLTgtNC4zNHMtMTUuNzMtMy4zLTE2LjMzLDkuNjdhLjYxLjYxLDAsMCwwLDEuMDkuNDYsOC42LDguNiwwLDAsMSwyLjU4LTIuNS4xLjEsMCwwLDEsLjA5LDAsMTMuNDUsMTMuNDUsMCwwLDAsMi4zMiwxLC4xMi4xMiwwLDAsMSwuMDcuMjFjLTIsMi42NS0zLjg1LDYuNzYtLjE0LDExLjQyYS41My41MywwLDAsMCwuOTMtLjQsMTIsMTIsMCwwLDEsMC0yLjM5LjE0LjE0LDAsMCwxLC4yNS0uMDZjMS4zNiwyLDQuNTMsMi42OCw3LjQ5LDEuMzlhLjEyLjEyLDAsMCwxLC4xNy4xYy4xMi43OC45LDQuMTYsNiw3Ljk1YS42NS42NSwwLDAsMCwxLS43OSw3LjMsNy4zLDAsMCwxLS41OC0yLjYuMTEuMTEsMCwwLDEsLjEyLS4xMUE2Ljg0LDYuODQsMCwwLDAsNTU5LDEyNWEyOCwyOCwwLDAsMCwxLjctNS4yNS4xMi4xMiwwLDAsMSwuMDYtLjA4bDQuNDYtMi44OWEuMTMuMTMsMCwwLDEsLjE5LjA3Yy4zNC44My43MSwxLjc1LDEuNDcsMmEuMTMuMTMsMCwwLDEsLjEuMTYsMjUsMjUsMCwwLDEtMSwzLjExLjQ1LjQ1LDAsMCwwLC42Ni41OGMyLjkzLTIuMTQsOC44LTcuNTcsNi4wOS0xMy40Myw5LjUzLTcuNSwxNS4zOC0xNi43MywxNi4zMy0yMi4yOGExLjMxLDEuMzEsMCwwLDAtMS4yMi0xLjU1Yy02LjEtLjE5LTkuMzctMS44My04LjkyLTcuMzZhLjEzLjEzLDAsMCwxLC4xNi0uMTNjMS41NS40MywxNS4yNCw0LjA2LDI0LjQxLDEuNDNhMS4yMywxLjIzLDAsMCwxLDEuNDIuNjcsNTAuMyw1MC4zLDAsMCwxLDMuNjQsOC42MWMuNzYsMy4xNS4xNiw0LjgyLjExLDQuOTNoMGMtLjUzLjc0LTEuNTIsMS40Ni00LjEyLDMuMTQtNi41Myw0LjIzLTUuODcsOS41Ni4xMSwxNS42N2EuNDEuNDEsMCwwLDAsLjY3LS40MiwyMS44OCwyMS44OCwwLDAsMS0uNzktMy42NS4xMy4xMywwLDAsMSwuMTYtLjEzLDIuOTIsMi45MiwwLDAsMCwyLS4zNS4xMy4xMywwLDAsMSwuMTguMTFjLjEuNzkuOCw0LDUuMzYsNi4xM2EuMy4zLDAsMCwwLC4zOS0uMzksMTkuNzEsMTkuNzEsMCwwLDEtMS0zLjI5LjEzLjEzLDAsMCwxLC4xNC0uMTVjMSwwLDQuNjksMCw1LjUyLTQuODdhLjEyLjEyLDAsMCwxLC4xNi0uMWMuODguMzIsNS44MywxLjkzLDguODMtMmEuMjUuMjUsMCwwLDAtLjIzLS40LDYuNCw2LjQsMCwwLDEtMi44OS4xOS4xMy4xMywwLDAsMS0uMDUtLjJjLjQ3LS44MiwyLjc1LTUuNDUtMi44OC0xMC40NWEuMTYuMTYsMCwwLDEsMC0uMTZjMy42Ny0xMS40NCwyLjk0LTI0LTEuMjEtMzEuNTJhMS4zNCwxLjM0LDAsMCwwLTEuNjMtLjY2Yy03LjEsMi41Ni0xOC43NCwzLjY0LTIwLjE2LTIuNzNhLjE1LjE1LDAsMCwxLC4xNS0uMTgsMzkuMjIsMzkuMjIsMCwwLDAsOS45Mi40LDU5LDU5LDAsMCwwLDExLjE4LTJjNC4xNi0xLjI5LDcuNTYtMi45MSw5LjItNy4yYTE1Ljc2LDE1Ljc2LDAsMCwwLTIuMzMtMTMuNjguMTMuMTMsMCwwLDEsMC0uMTlaTTQ4My40NywxOC4wOGEyMC4xNiwyMC4xNiwwLDAsMCw2LjkyLDIuNTdzLS44LDYuNTItLjkxLDYuNDZjLS4zMy0uMi0uNjYtLjM3LTEtLjU1YTI2LjA1LDI2LjA1LDAsMCwwLTIuNzItMS4yNyw4LjExLDguMTEsMCwwLDAtMS42LS40Nyw1LjM3LDUuMzcsMCwwLDAtMS0uMDhabS0xLTcuOTNjLjgyLTMuNDUsNC4yMi00LjMyLDUuNS00LjY2QTEzLjE3LDEzLjE3LDAsMCwxLDQ5Niw1LjljMi4zNi44Niw2LjA3LjIyLDgtLjU0czMuNDgtMS4xNyw0LjUxLS44YTkuNTksOS41OSwwLDAsMCwzLjMxLjU5LDE3Ljg4LDE3Ljg4LDAsMCwwLDMuODctLjY5cy0yLjQzLDItNCwyYy0yLjQyLS4wOS00LjEyLDIuNDItNC44MiwzLjcxcy0yLDIuMDctNC45LDIuMTVjLTMuODMuMS00LDMuMTItNC4zNyw0LjRzLTEuNiwyLTQuMzIsMS42NkExOS4zNiwxOS4zNiwwLDAsMSw0ODUuNTMsMTZjLTIuNTEtMS4yNi0zLjY1LTMuNTUtMy4xLTUuODdtLTQuNjksMjIuNzFjLjU3LTEuODQsMi44NC0xLjMyLDQuMTItMWEuMzUuMzUsMCwwLDAsLjM4LS41MSwzLjI1LDMuMjUsMCwwLDEtLjE4LTIuOTNjLjkzLTEuNDMsMy43LjA3LDUsLjdzNC4yMSwyLjE3LDMuNTUsMy44NmEyLjI5LDIuMjksMCwwLDEtMiwxLjQ1LjM3LjM3LDAsMCwwLS4yLjYxYy43MS44LDEuODMsMi4yNSwxLjM1LDMuNDZzLTIuMzcsMS4wOS0zLjUzLDFhLjM3LjM3LDAsMCwwLS4yOS42MmMuNjguNzYsMS41NiwyLjA1LDEuMiwzLjM1LS41NCwyLTMuNjIuNTYtNS4yNC0uMTVzLTMuNTktMi4wNS0zLjMtMy41MWMuMTktLjk0LDEuMzgtMS41MywyLjItMS44M2EuMzcuMzcsMCwwLDAsLjA3LS42NWMtMS4yNC0uODEtMy42Ni0yLjY2LTMuMS00LjQzbTQsNDEuNzJjLS41OCwwLS40OS00LjM0LS4yOC0xMSwuMjMtNy4xNC43MS0xNS40NS43Ny0xNy4yYTE4Ljg5LDE4Ljg5LDAsMCwwLDIuMjcuNzQsNi4zNSw2LjM1LDAsMCwwLDEuNjkuMTgsMS4zMSwxLjMxLDAsMCwwLC4zMywwYy0uMzUsMS45LS42OCw0LjUtMS4xMyw3LjUzLS4zMywyLjIzLS44Niw1LjY1LTEuMzUsOS0uOCw1LjQ4LTEuODEsMTAuNzYtMi4zLDEwLjc0bTMyLjkzLTUuNTNhMTkuNTUsMTkuNTUsMCwwLDEtMi41MS00LjczYy0uMTktLjU1LS40NS0xLjQ4LS42NS0yLjI4YS4zOS4zOSwwLDAsMC0uNjUtLjIsMTEuNSwxMS41LDAsMCwwLTIuMjksMy4wNywxLjU5LDEuNTksMCwwLDAtLjA5LjIsMTksMTksMCwwLDAtMS42OCw0LjI2LDMwLjc0LDMwLjc0LDAsMCwxLTMuOTEtMy45MmMwLS4yMS4wNS0uNDMuMDktLjY1LjA2LS40LjEzLS44MS4yMi0xLjIxYTIzLjY5LDIzLjY5LDAsMCwxLC42NC0yLjQ0aDBhLjQ5LjQ5LDAsMCwwLS4xMS0uNS40NS40NSwwLDAsMC0uNjQsMCwxNS42NCwxNS42NCwwLDAsMC0xLjY0LDIuMTNjLS4xMS4xNy0uMjEuMzYtLjMxLjU0LS43Mi0uOTItMS40NC0xLjg4LTIuMTUtMi44NiwwLS4xNywwLS4zNC4wNi0uNTEsMC0uMzguMS0uNzUuMTctMS4xMi4xNC0uNzUuMzQtMS41MS41Ni0yLjI5aDBhLjUuNSwwLDAsMC0uMTEtLjQ4LjQzLjQzLDAsMCwwLS42NCwwLDE0LjM0LDE0LjM0LDAsMCwwLTEuNTYsMmwtLjA5LjE2Yy0zLjkyLTUuNzUtNy4yMy0xMS41OC04LjE3LTEzLjI3bC4xNS0uNDhhMy42OSwzLjY5LDAsMCwwLS4wOC0yLjE3LDIsMiwwLDAsMC0uMDktLjIyLDIuNzYsMi43NiwwLDAsMCwuNjctLjE0LDMuMywzLjMsMCwwLDAsMS41LTEuMTEsNC4yNiw0LjI2LDAsMCwwLC43NC0xLjYzLDQuMDUsNC4wNSwwLDAsMCwwLTEuOSwzLjQ4LDMuNDgsMCwwLDAtLjY4LTEuNDIsMy40OCwzLjQ4LDAsMCwwLDEuMjUtMS40NSwzLjMzLDMuMzMsMCwwLDAsLjIxLS40OGMwLS4xNS4xMS0uMzEuMTYtLjVBNC4yOCw0LjI4LDAsMCwxLDQ5NC4zMSwzNWMxLDIuMDYtLjE3LDUuNDQtLjMyLDYuNzJBNi43Myw2LjczLDAsMCwwLDQ5NS4zMyw0NmMuODcsMS4xOSw4LjUyLDUuNjMsMTUuNjUsOC42MWwxLjA2LjQ2YzEuNjMtNS42LDYtMTAuMjUsOS4yLTEzLjc0LjczLS44LDEuNDItMS41NiwyLTIuMjZsLjc0LS45MS0xLTFhNS4yNCw1LjI0LDAsMCwwLTMuODQtMS45LDE4LjkyLDE4LjkyLDAsMCwwLTQuNjMsMS4yMWMtMS40Ny0xLjYxLjgtMy42LDEuODQtNC41OCwxLjI2LDAsMy0uMTQsMy43My0uMTlsMS4xMy0uMDZhLjYzLjYzLDAsMCwwLC40OS0xLDE1LjYzLDE1LjYzLDAsMCwwLTEuMzctMi4yNGMtLjc0LS45LTIuNTMtLjEyLTUuNDMtLjQ1LTQuMTYtLjQ3LTUuODQtNy40OC01Ljg0LTcuNDhBOC4xMiw4LjEyLDAsMCwwLDUxNCwxOS4yOWMxLjc5LTEuMTIsMi42NC0zLjY4LDQuNzktNS4xOHM3LTEuOTQsMTAuNi0yLjE5YzMuMzktLjIzLDQuMi0yLjUsNS00LjE1YS4zNC4zNCwwLDAsMSwuNDgtLjE1YzQuMjUsMi43NSwzLjYxLDYuNDUsMi40OCw4YTEzLjY0LDEzLjY0LDAsMCwxLS45NCwxLjIuMjUuMjUsMCwwLDAsLjA3LjM4LDIuODgsMi44OCwwLDAsMSwxLjQ3LDIsNy42OSw3LjY5LDAsMCwxLS4yNyw1LjU0LDYuOTEsNi45MSwwLDAsMS00LjA4LDMuMDdjLS4yNC4xLS41OC4yNC0xLC40MWExLjEzLDEuMTMsMCwwLDAsLjMzLDIuMTRoMGE2LjA4LDYuMDgsMCwwLDAsMSwwdjBhMTUuMTMsMTUuMTMsMCwwLDAsOC4yMi0yLjE1LDQ0LDQ0LDAsMCwxLDQuNjIsMTIuNTMsMTMsMTMsMCwwLDAtMS4zNC0xLjE0LDE0LjYyLDE0LjYyLDAsMCwwLTMuMi0xLjc4LDE0LjkyLDE0LjkyLDAsMCwwLTMuNDItLjkxLjcyLjcyLDAsMCwwLS43Ny40Ni43OS43OSwwLDAsMCwuMzksMWgwYTI1LjU2LDI1LjU2LDAsMCwxLDIuOTEsMS40N0ExNi40OSwxNi40OSwwLDAsMSw1NDQsNDEuNzZhMTMuNiwxMy42LDAsMCwxLDIuMSwyLjMyLDEzLjIyLDEzLjIyLDAsMCwxLC44NywxLjMzbC4zNi43MiwwLC4wNmEyNC4zNCwyNC4zNCwwLDAsMS0xLjU5LDkuMDdjMCwuMTUtLjEyLjMtLjE5LjQ2LS4wOS0uMy0uMTktLjYtLjMtLjg5YTE2LjY5LDE2LjY5LDAsMCwwLTIuMTMtNCwxMi4zLDEyLjMsMCwwLDAtMy4yOS0zLjExLDExLjYyLDExLjYyLDAsMCwwLTQtMS42LjczLjczLDAsMCwwLS44LjQ2LjguOCwwLDAsMCwuMzksMWgwYTEzLjYyLDEzLjYyLDAsMCwxLDMuMjcsMiwxMS42NCwxMS42NCwwLDAsMSwyLjQ2LDIuODIsMTYsMTYsMCwwLDEsMS42MywzLjUsMTYuODUsMTYuODUsMCwwLDEsLjU2LDEuOTFjLjA4LjMyLjE3LjY1LjIzLDFhMS4xLDEuMSwwLDAsMCwuMTYuMzcsNDEuOCw0MS44LDAsMCwxLTQuODYsNmwtLjEyLS43N2MtLjA2LS40MS0uMTQtLjgxLS4yMy0xLjIyYTE4LjYsMTguNiwwLDAsMC0xLjcxLTQuNjksMTMuNjMsMTMuNjMsMCwwLDAtMy4wOC0zLjg5LDEzLDEzLDAsMCwwLTQuMS0yLjQuNzIuNzIsMCwwLDAtLjg2LjM1LjguOCwwLDAsMCwuMjYsMWgwYTE1LjMsMTUuMywwLDAsMSwzLjMsMi42NSwxMy4yMywxMy4yMywwLDAsMSwyLjI5LDMuNDcsMTguMTEsMTguMTEsMCwwLDEsMS4yOCw0LjA4LDEwLjE4LDEwLjE4LDAsMCwxLC4xOSwxLjA4Yy4wNi4zNi4xMi43My4xNSwxLjFzLjA4LjczLjEsMS4xYTEuMTEsMS4xMSwwLDAsMCwuMTIuNDMsNDguNjYsNDguNjYsMCwwLDEtNS4xLDQuMDcsMS4zMiwxLjMyLDAsMCwxLS4yNS0uMTZjLS4zMS0uMTgtLjU5LS40LS44OC0uNTlzLS41OC0uNDEtLjg2LS42My0uNTYtLjQzLS44Mi0uNjZhMTYuNzgsMTYuNzgsMCwwLDEtMi44OS0zLDEyLjQ1LDEyLjQ1LDAsMCwxLTEuOTEtMy42OSwxMy43OSwxMy43OSwwLDAsMS0uNjItNC4yOWgwYS43Ni43NiwwLDAsMC0uNTgtLjc0LjcyLjcyLDAsMCwwLS44Ni41OSwxNC4wOSwxNC4wOSwwLDAsMC0uMDYsNSwxMy45MSwxMy45MSwwLDAsMCwxLjc5LDQuNzcsMTksMTksMCwwLDAsMy4xLDMuODdjLjI5LjI5LjU5LjU1Ljg5Ljgycy41NS40Ny44Mi42OWEzMi42MywzMi42MywwLDAsMS02LjQxLDIuODNsLS4zMi0uMjZjLS44My0uNjYtMS42LTEuMzItMi4zMy0yYTMwLjcyLDMwLjcyLDAsMCwxLTQuNTItNW03MS4xNiwxOWEzNS4yNiwzNS4yNiwwLDAsMS0zLjk0LDcuNWwwLDBhOS42OCw5LjY4LDAsMCwwLTEuMzktMS44LDEyLjU1LDEyLjU1LDAsMCwwLTMuNDMtMi41MS42Ni42NiwwLDAsMC0uODMuMjEuNzYuNzYsMCwwLDAsLjEyLDFsMCwwYTEzLjA2LDEzLjA2LDAsMCwxLDEuMywxLjI4LDEwLjc0LDEwLjc0LDAsMCwxLDEuMDgsMS40OCw3LjcyLDcuNzIsMCwwLDEsLjc0LDEuNTcsNi4zMSw2LjMxLDAsMCwxLC4zLDEuNTZjLS45MSwxLjE1LTEuODcsMi4yNC0yLjgzLDMuMjctLjA3LS4xMy0uMTMtLjI3LS4yLS4zOWExMCwxMCwwLDAsMC0xLjMzLTEuODgsMTMsMTMsMCwwLDAtMS41OC0xLjQ5LDEyLjE2LDEyLjE2LDAsMCwwLTEuNzgtMS4xNy42NS42NSwwLDAsMC0uODIuMTcuNzQuNzQsMCwwLDAsLjA2LDFsMCwwYTEyLjQsMTIuNCwwLDAsMSwxLjIyLDEuMzcsMTEuMDcsMTEuMDcsMCwwLDEsMSwxLjU0LDcuNDksNy40OSwwLDAsMSwuNjIsMS42Miw1Ljc0LDUuNzQsMCwwLDEsLjE4LDEuNTdoMGwwLC4xOWMtMS41NCwxLjQ3LTMuMDYsMi43OC00LjQzLDMuOWEuMTMuMTMsMCwwLDAsMCwuMTVjMS45Miw1LjI3LTEuMzUsMTAuMTgtMyw1LjQyLS4zOC0xLjA4LS43NC0uOS0xLjQ1LS4zNHMtNi42OSw0LjY4LTcuNDEsNS4xOGEuMTMuMTMsMCwwLDAtLjA2LjE0Yy43MSw0LTMuMTksNy41Mi01LjgxLDcuMjctMi4xNy0uMjEtMy4yOS0yLjg0LTIuNzUtNi4zMWEuNDkuNDksMCwwLDAtLjc4LS40OWMtMi4yOSwxLjk1LTYuNTMsNC4zOS05LjIzLjUtMS4yNy0xLjg0LDEuMTgtNC44NiwyLjU1LTYuM2EuNTcuNTcsMCwwLDAtLjMxLS45NWMtMi4wOS0uMy02LjE3LTEuMTgtNC41Mi0zLjI3LDEuNTMtMS45NCw0LjQ1LTEuNjQsNi42MS0xLjQ3YTE3LDE3LDAsMCwxLDExLjcxLDUuNjIuMTIuMTIsMCwwLDAsLjE2LDAsMzQuMjIsMzQuMjIsMCwwLDAsNi4zMy00Ljc5YzEuOTQtMi4yMiw0LjgtMy45LDUtMTQuMjguMDktNC45Mi00LjI5LTguOTMtNi45LTEyLjhTNTU2LDc0LjMxLDU1Ny44MSw2OGEuMTQuMTQsMCwwLDEsLjEyLS4xMWMuMzMsMCwxLjY2LS4wNSw1LjgtLjEyYS4xMi4xMiwwLDAsMSwuMSwwLDM0LDM0LDAsMCwwLDExLjk0LDguOC4xNC4xNCwwLDAsMSwuMDkuMTRjLS4xMiwxLjE1LS44NSwxMS4yNiwxMCwxMS4yNm0xMS43OS0yNC43NmM0LjE2LDIuNjksMTIsMi4zMywxOS40OC4wNmEuMTMuMTMsMCwwLDEsLjE2LjA3LDMzLjExLDMzLjExLDAsMCwxLDIuMjYsNy40MywxNy40LDE3LjQsMCwwLDAtMi4yMi0xLjA3LDE0LjgxLDE0LjgxLDAsMCwwLTIuNC0uNzUsMTMuODEsMTMuODEsMCwwLDAtMi40Ny0uMzIuNDYuNDYsMCwwLDAtLjQ1LjM0LjQ5LjQ5LDAsMCwwLC4zLjU5aDBhMTMuMjgsMTMuMjgsMCwwLDEsMi4xNS44MywxMy41MywxMy41MywwLDAsMSwyLDEuMTNBMTcuNTYsMTcuNTYsMCwwLDEsNjE4LjMxLDczYy41OC40OSwxLjE0LDEuMDgsMS42OCwxLjQ3aDBhMzkuMTYsMzkuMTYsMCwwLDEsLjEsNC40OGMtLjItLjEzLS40MS0uMjQtLjYxLS4zNmEyMC4xMSwyMC4xMSwwLDAsMC0yLjI5LTEuMTEsMTUuODcsMTUuODcsMCwwLDAtMi40LS43NSwxMi45NCwxMi45NCwwLDAsMC0yLjQ3LS4zMS40NC40NCwwLDAsMC0uNDUuMzMuNDkuNDksMCwwLDAsLjMuNTloMGExNS43OSwxNS43OSwwLDAsMSw0LjE1LDIsMTkuMDksMTkuMDksMCwwLDEsMS44NCwxLjM3Yy41Ni40OCwxLjExLDEsMS42NCwxLjQ0YTQ5LjIzLDQ5LjIzLDAsMCwxLTIuMzMsMTAuMjFoMGwtLjM4Ljg5YzQuNywyLjUxLDUuODEsOSwyLjE5LDkuNjdhMy44NSwzLjg1LDAsMCwxLTIuOTMtLjYxLjQyLjQyLDAsMCwwLS42OS4yNWMtLjM5LDEuODYtMS42Nyw1LjUxLTQuMjYsNS41MS0yLjE1LDAtMi44MS0xLjY3LTIuODUtMy4yNmEuNS41LDAsMCwwLS44OS0uMzRjLTEuMzEsMS42My0yLjYyLDIuMjQtMy43MiwxLjVhMi44MywyLjgzLDAsMCwxLTEuMTItMy41OWMxLjU2LTMuMyw2LjI0LTQuNTQsOC4xMi03LDAsMCwwLDAsMCwwLDIuMzEtNC4xLTEuNS0xMi40MS00LjI5LTE4LjMzYTEuMzQsMS4zNCwwLDAsMC0xLjYtLjc1LDM5LjE3LDM5LjE3LDAsMCwxLTE3Ljg2LjcyYy0xMS4yOC0yLjE5LTE3LjQ2LTYuMzgtMjEuMjMtMTEuMTlhLjI3LjI3LDAsMCwxLS4wNy0uMDhjLS4yNS0uMzItLjQ4LS42NC0uNzEtMWwwLDBjLTEtMS40NS0xLjY0LTIuNTItMi4yMy0zLjM3YS43MS43MSwwLDAsMC0uNDUtLjMxYy0xLjEyLS4yLS40NSwyLjg1LS4zNCwzLjczYS4xMy4xMywwLDAsMS0uMS4xNmMtMi4yNy40Ny00LjkyLjExLTcuODYuMjRhLjE3LjE3LDAsMCwwLS4xLjA2Yy00LjI4LDUuMzgtNS43NCw5LjE4LTE3Ljk0LDExLjQtMS43LjMxLTEuNTcsMS40MS0uODMsMmE3LDcsMCwwLDEsMiw0LjE4Yy4xMi45LS42MiwyLjA2LTQuNDEsNC42Ny0uMDktLjIzLS4xOC0uNDUtLjI5LS42N2E5LjEsOS4xLDAsMCwwLTEuMjktMS45NCwxMC4zMSwxMC4zMSwwLDAsMC0xLjYxLTEuNSw5LjMxLDkuMzEsMCwwLDAtMS44Ny0xLjA4LjY3LjY3LDAsMCwwLS44MS4yNC43Ni43NiwwLDAsMCwuMTUsMWwuMDYsMGE5LjI2LDkuMjYsMCwwLDEsMS4yNywxLjI0LDguMTgsOC4xOCwwLDAsMSwxLDEuNDcsNi4zNCw2LjM0LDAsMCwxLC41OCwxLjU5LDUuNTYsNS41NiwwLDAsMSwuMTUsMS4zNCw0NC4xNSw0NC4xNSwwLDAsMS00LjU0LDIuNTIsOS4zOSw5LjM5LDAsMCwwLS4zNS0xLjA2LDksOSwwLDAsMC0xLjEzLTJBMTAuMTMsMTAuMTMsMCwwLDAsNTIyLjcsODdhOS43NSw5Ljc1LDAsMCwwLTEuNzgtMS4yNC42Ny42NywwLDAsMC0uODIuMTcuNzcuNzcsMCwwLDAsLjA2LDFsLjA2LDBhOSw5LDAsMCwxLDEuMTcsMS4zNCw3Ljg5LDcuODksMCwwLDEsLjg2LDEuNTUsNi4yNCw2LjI0LDAsMCwxLC40NiwxLjYzLDUuNzIsNS43MiwwLDAsMSwwLDEuNDNjLTUuNjMsMi05LjA2LDEuMDktMTAuODksMGgwYTEwLjMyLDEwLjMyLDAsMCwwLTEuMjgtLjg2LDEsMSwwLDAsMC0xLjM1LjM1LDEuMTcsMS4xNywwLDAsMCwwLDEuMzQsMTQuNTIsMTQuNTIsMCwwLDEsLjgyLDEuMjMsMy4zNiwzLjM2LDAsMCwxLC40OSwxLjcyYzAsMS45My0xLjczLDIuNTUtMy44LDIuNTVzLTMuNy0uNjItMy43LTIuNTV2LTFhLjgyLjgyLDAsMCwwLS45NC0uODYsMS41MSwxLjUxLDAsMCwwLTEsLjc0bC0uNjQsMS4xMnYwYy0uMDkuMjItMy40Myw3LjY2LTYuODQsNi0yLjI1LTEuMTItMS4yNC0zLjgyLDAtNS44NGEuNjcuNjcsMCwwLDAtLjc4LTEsMy44OCwzLjg4LDAsMCwxLTMuMzMsMGMtMi4xMS0xLjE3LTIuOC0zLjUzLTIuMDYtNWExMi4yMSwxMi4yMSwwLDAsMSwzLjExLTQsLjc0Ljc0LDAsMCwwLDAtMS4wN2MtLjc1LS43Ny0xLjE1LTEuNDEtLjczLTIuMy41Mi0xLjEsMS42Mi0xLjU0LDMuNzQtMS4xNSwyLjM5LjQyLDMuNzIsMy4wOSw0LjQ1LDZhMS45MSwxLjkxLDAsMCwwLDIuMjgsMS40NmgwYzguMjItMiwxNC4yNy03Ljg5LDE5LjEzLTExLjkybC40NC4zNywxLjMyLDEuMDkuNjItLjE4YzEyLjE3LTMuMzgsMjMuNTQtMTUuNTgsMjYuMzMtMjIuODNhMjcuNTgsMjcuNTgsMCwwLDAsMS42OS03LjIxYzE3LS41LDE2LjczLTEsMjQuMzItMi4zMSw1Ljg5LTEuMDUsMTMuNzgsMi40MywxNy42NSw2LjM0LDIuOCwyLjgyLDIuNjksOC4xOSw1Ljc1LDEwLjE3bTI4LjU5LTE5Yy0uMyw0LjM4LTIuNDEsNy4zMi03LjEsOC42NXMtMTMuMzIsMy4zOS0yMi4zNCwxLjg2Yy0uNjItLjEtMS4zNi0yLjEzLTEuNi0yLjgyYS4xMy4xMywwLDAsMSwuMTUtLjE4YzguMTUsMS40MiwyMC4zLjA5LDI0LTIuMjgsNC45NC0zLjEyLDMuMy0xMS44LTMuMjQtMTQuMzMtOS41Ny0zLjctMzAsMS4yNS00My45MywxLjQ1LTUuMTEuMDctMTAuNTksMC0xNi42NC01LjM1LTMuODUtMy43NS00LjE1LTEwLjExLTEuNTItMTQuNTJ2MGMyLjYzLTMuODYsNy40My01LjM2LDExLjc1LTUsMTEuMzkuODgsMTQuNjgtNi42NSwyNC40My04LjcsOS40My0yLDEzLjY5Ljc2LDE0Ljg4LDEuNzZhLjE0LjE0LDAsMCwxLS4xMS4yNSwyOCwyOCwwLDAsMC0xNC44OCwyLjA2LDMyLjI2LDMyLjI2LDAsMCwwLTcuMyw0LjY5LjE1LjE1LDAsMCwwLC4wNi4yNWM0LjksMS4yNCw1LjQ2LDIuMjksMTAuODYsMi43MywxMi44NCwxLjA1LDE1Ljg2LTQuNTEsMjIuNDktMy4xM2ExMi42LDEyLjYsMCwwLDEsOCw1LC4xNC4xNCwwLDAsMS0uMTUuMjFjLTE5Ljc3LTQuNzQtMTcuNzksMy45MS0yOC4zNiw0LjY5LTYuNDEuNDgtMTUuNzQtNS0xOC40LTQuNmEuMTQuMTQsMCwwLDAtLjExLjEzYy0uMSwxLTEsOC41Ny03LjEyLDYuOTJhLjE0LjE0LDAsMCwxLDAtLjI1YzIuMzQtMi4yNCwxLjQzLTUuNjEtMS45My02LjYyYTExLjMzLDExLjMzLDAsMCwwLTcsLjRjLTMuNjgsMS40Ni01LjEyLDYuNjUtMi45LDkuODgsMy4zMyw0Ljg2LDguNDUsNiwxNS44LDUuNTQsNy42NC0uNSwxMi42Mi0xLjA4LDIzLjI2LTIuNTQsMy4xNC0uNDMsOS4xOC0xLjA3LDE1LTEuMjgtLjM2LjYyLS43MSwxLjI0LTEsMS44OGEuNDkuNDksMCwwLDAsMCwuNDcuNDMuNDMsMCwwLDAsLjYyLjE3bDAsMGMuNjItLjM5LDEuMjItLjc5LDEuODEtMS4xOWwuODctLjYyYTIuMzcsMi4zNywwLDAsMCwuNzgtLjdsMC0uMDZjMS4xNywwLDIuMywwLDMuMzcuMDVsLS4xMy4xOGExNS45MywxNS45MywwLDAsMC0xLjI5LDIuMjguNTMuNTMsMCwwLDAsLjA1LjUuNDQuNDQsMCwwLDAsLjY0LjA5aDBjLjYyLS41LDEuMjYtMSwxLjkyLTEuNGwxLS42NmEzLjQ4LDMuNDgsMCwwLDAsLjktLjc0LDguNzcsOC43NywwLDAsMSw0LjEyLDEuMjVsLTQuMTYsMy40OWMtLjQzLjMzLDQuODcsNC4wNyw0LjQ1LDEwLjE5Ii8+PC9nPjwvZz48L3N2Zz4=" alt="University of Tasmania" width="630" height="132"></a>
   <h1 id="title">Cradle Mountain &amp; Dove Lake</h1>
   <div class="sub" id="region">Tasmania in bricks</div>
   <p id="blurb">Real terrain from the LIST Tasmania 25&nbsp;m DEM, built from true-dimension bricks.</p>
@@ -113,6 +121,24 @@ td.id{font-family:var(--mono);color:var(--ink2)}
     <div class="scenes" id="scenes"></div>
   </div>
   <div class="grp">
+    <div class="lbl">Explore <span id="modeNote"></span></div>
+    <div class="seg" id="modes">
+      <button data-m="land" aria-pressed="true">Landscape</button>
+      <button data-m="fire" aria-pressed="false">Bushfire</button>
+      <button data-m="water" aria-pressed="false">Water drop</button>
+    </div>
+  </div>
+  <div class="modebox" id="fireBox" hidden>
+    <div class="lbl">Fire season <span id="fireOut"></span></div>
+    <input type="range" id="fireYear" min="1900" max="2026" value="2026" step="1" aria-label="Fire season">
+    <div class="row"><button class="btn" id="firePlay">▶ Play</button></div>
+    <div class="readout" id="fireRead"></div>
+  </div>
+  <div class="modebox" id="waterBox" hidden>
+    <div class="readout" id="waterRead">Tap the land to release a raindrop. It runs downhill to the sea, or to the edge of the model.</div>
+    <div class="row"><button class="btn" id="dropClear">Clear drops</button><button class="btn" id="dropTas" hidden>Open all of Tasmania</button></div>
+  </div>
+  <div class="grp">
     <div class="lbl">View</div>
     <div class="seg" id="views">
       <button data-v="hero" aria-pressed="true" id="heroBtn">Hero</button>
@@ -126,25 +152,22 @@ td.id{font-family:var(--mono);color:var(--ink2)}
   </div>
   <div class="grp">
     <div class="lbl">Vertical scale <span id="veNote"></span></div>
-    <div class="seg" id="ve">
-      <button data-ve="1" aria-pressed="false">1× true</button>
-      <button data-ve="2" aria-pressed="true">2×</button>
-      <button data-ve="3" aria-pressed="false">3×</button>
-      <button data-ve="5" aria-pressed="false">5×</button>
-    </div>
+    <div class="seg" id="ve"></div>
   </div>
   <div class="slr" id="slrBox">
-    <div class="lbl">Sea-level rise <span id="slrOut">+0 m</span></div>
-    <input type="range" id="slr" min="0" max="100" value="0" step="1" aria-label="Sea-level rise">
+    <div class="lbl">Sea level <span id="slrOut">present</span></div>
+    <input type="range" id="slr" min="0" max="100" value="0" step="1" aria-label="Sea level relative to present">
     <div class="marks" id="slrMarks"></div>
     <div class="readout" id="slrArea"></div>
     <div class="warn" id="slrWarn"></div>
   </div>
   <div class="row">
     <button class="tog" id="snow" aria-pressed="true"><i></i>Spring snow</button>
+    <button class="tog" id="lgmT" aria-pressed="false" hidden><i></i>Ice age</button>
     <button class="tog" id="labelsT" aria-pressed="true"><i></i>Labels</button>
     <button class="tog" id="trees" aria-pressed="true"><i></i>Canopy</button>
     <button class="tog" id="bldgT" aria-pressed="true" hidden><i></i>Buildings</button>
+    <button class="tog" id="geoT" aria-pressed="false" hidden><i></i>Geology map</button>
   </div>
   <div class="grp">
     <div class="lbl">Build step <span id="stepOut">complete</span></div>
@@ -157,8 +180,12 @@ td.id{font-family:var(--mono);color:var(--ink2)}
   </div>
   <button class="btn primary" id="partsBtn">Parts list</button>
   <p class="note">Elevation: LIST Tasmania 25&nbsp;m DEM (Land Tasmania, CC BY 3.0 AU; TIN of 1:25k 10&nbsp;m contours, spot heights and water bodies; 90% within 5&nbsp;m), exactly area-averaged to the chosen stud size. Blocks holding a LIST spot height take the surveyed value. Lakes: LIST Hydrographic Areas at full-supply level; a block is water when ≥50% covered. Sea = cells outside the DEM (heights are AHD, ≈ mean sea level). Grid is MGA zone 55. Labels from LIST Named Features and spot heights. Urban areas: LIST Landuse Live (ALUM 5.3–5.9 intensive uses excl. rural residential and recreation), shown as flat tiles where a block is ≥50% urban. Other surface colours are a slope/elevation classification, not mapped vegetation.</p>
+  <p class="note" id="geoNote" hidden>Geology: Mineral Resources Tasmania digital geology, 1:25&nbsp;000 (1:250&nbsp;000 where unmapped), via theLIST (CC BY 3.0 AU). The walls and build-step slices show rock; <i>Geology map</i> also replaces the vegetation plate with the mapped unit. Below ground is an indicative 2.5D model: bases of the near-flat Jurassic dolerite and Permian–Triassic (Parmeener) layers are fitted to the DEM elevation of mapped contacts (a plane of ≤3° dip plus a local correction that fades over ~600&nbsp;m), then forced to agree with the surface map in every cell; older folded basement is extended vertically from the nearest mapped outcrop; glacial and other Quaternary cover is a 10&nbsp;m veneer. Faults are not yet modelled. Use the build-step slider to slice through it.</p>
   <p class="note" id="bldgNote" hidden>Buildings: Overture Maps Foundation, buildings theme release 2026-09-23.0 (footprints mostly OpenStreetMap, © OpenStreetMap contributors, ODbL). Height = building height where given (mostly Microsoft ML estimates), raised to 3.3&nbsp;m × floors where floors are tagged; else a default by type (houses 5&nbsp;m, sheds 3&nbsp;m, other 8&nbsp;m). A 25&nbsp;m cell is built when ≥4 of 16 sub-samples fall in a footprint and takes the tallest building there; coarser blocks take the mean of their built cells when ≥25% built. Buildings sit on top of the terrain; none on flooded cells. Indicative only.</p>
-  <p class="note" id="slrNote">Sea-level rise is a static, uniform (“bathtub”) rise with hydraulic connectivity to the sea, computed on the metre heights before brick quantisation. It ignores ocean-dynamic and gravitational fingerprints, vertical land motion/GIA, tides and surge. The DEM interpolates between the 1&nbsp;m coastline and the first 10&nbsp;m contour, so rises of a few metres are not reliably resolved; use LiDAR for planning.</p>
+  <p class="note" id="lgmNote" hidden>Ice age: glacier outlines from the GLACIMONTIS compilation of reconstructed palaeoglaciers (Zenodo, doi:10.5281/zenodo.15600659, CC BY 4.0), which for Tasmania maps the maximum ice extent of the last glaciation from Colhoun &amp; Barrows (2001), Barrows et al. (2001, 2002) and Mackintosh et al. (2006), dated ~44–20 ka. Ice thickness is not mapped: it is modelled as perfectly plastic ice (basal shear stress 100&nbsp;kPa, ρ&nbsp;=&nbsp;900&nbsp;kg&nbsp;m<sup>−3</sup>) on today’s ground surface, built inwards from the mapped margin, so it is indicative only (no isostasy, lakes not removed from the bed). <span id="lgmSea"></span></p>
+  <p class="note" id="fireNote" hidden>Fire history: theLIST <i>Fire History – All</i> (Tasmanian Government fire agencies, via theLIST, CC BY 3.0 AU): mapped perimeters of bushfires and planned burns by fire season. A 25&nbsp;m cell counts as burnt when ≥50% of it lies inside a mapped perimeter; perimeters include unburnt patches, and records before the 1990s are incomplete. The top plate shows the most recent fire up to the chosen season; coarser blocks follow the majority of their 25&nbsp;m cells.</p>
+  <p class="note" id="waterNote" hidden>Water drop: the drop follows the steepest descent over the block heights shown (D8 routing on a depression-filled surface: Priority-Flood with ε, Barnes et al. 2014), so paths and catchments are only as good as the chosen stud size. Wet sea cells and the model edge are outlets; lakes are crossed at their outlet. The blue haze marks every block that drains to the same outlet.</p>
+  <p class="note" id="slrNote">Sea-level rise is a static, uniform (“bathtub”) rise with hydraulic connectivity to the sea, computed on the metre heights before brick quantisation. It ignores ocean-dynamic and gravitational fingerprints, vertical land motion/GIA, tides and surge. The DEM interpolates between the 1&nbsp;m coastline and the first 10&nbsp;m contour, so rises of a few metres are not reliably resolved; use LiDAR for planning.<span id="bathyNote" hidden> Sea floor: AusBathyTopo (Australia) 250&nbsp;m 2026 (Geoscience Australia, CC BY 4.0), heights relative to mean sea level, bilinear to 25&nbsp;m, shown to a floor of −150&nbsp;m. Lowering the sea exposes sea floor connected to open water at the model edge; enclosed basins are shown dry. Today’s sea floor is used for past sea levels (no correction for sediment, isostasy or tectonics).</span></p>
 </aside>
 
 <dialog id="dlg">
@@ -179,26 +206,28 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 /* ================= SCENES ================= */
 // hero: camera azimuth FROM target (deg, clockwise from grid north), elevation angle, distance × model size; target optional [E,N]
 const SCENES = [
- {id:'cradle', name:'Cradle Mountain & Dove Lake', region:'Cradle Mountain–Lake St Clair NP', hero:{label:'Boatshed', az:8, el:24, d:1.55, target:'Cradle Mountain'}, extra:'boatshed',
+ {id:'cradle', res0:25, ve:3, name:'Cradle Mountain & Dove Lake', region:'Cradle Mountain–Lake St Clair NP', hero:{label:'Boatshed', az:340, el:15, d:1.55, target:'Cradle Mountain'}, extra:'boatshed',
   blurb:'Dolerite towers above a glacial lake, seen from the Dove Lake boatshed.'},
- {id:'hobart', name:'Hobart & kunanyi', region:'nipaluna / Hobart', hero:{label:'From the Derwent', az:60, el:26, d:1.6, target:'kunanyi / Mt Wellington', lead:0.08},
+ {id:'hobart', res0:75, ve:3, name:'Hobart & kunanyi', region:'nipaluna / Hobart', hero:{label:'From the Derwent', az:60, el:20, d:1.6, target:'kunanyi / Mt Wellington', lead:0.08},
   blurb:'kunanyi / Mt Wellington (1271 m) rises straight out of the Derwent estuary behind the city.'},
- {id:'gorge', ve:3, name:'Cataract Gorge', region:'Launceston', hero:{label:'From the city', az:50, el:32, d:1.6, target:'Cataract Gorge', lead:0.08},
+ {id:'gorge', ve:3, name:'Cataract Gorge', region:'Launceston', hero:{label:'From the city', az:50, el:20, d:1.6, target:'Cataract Gorge', lead:0.08},
   blurb:'The South Esk cuts a dolerite gorge into the heart of Launceston before joining kanamaluka / Tamar.'},
- {id:'freycinet', ve:3, name:'Wineglass Bay & the Hazards', region:'Freycinet Peninsula', hero:{label:'From Great Oyster Bay', az:265, el:26, d:1.6, target:'Mount Freycinet', lead:0.08},
+ {id:'freycinet', ve:4, name:'Wineglass Bay & the Hazards', region:'Freycinet Peninsula', hero:{label:'From Great Oyster Bay', az:265, el:20, d:1.6, target:'Mount Freycinet', lead:0.08},
   blurb:'Pink granite domes and the perfect curve of Wineglass Bay.'},
- {id:'tasman', ve:3, name:'Cape Pillar & Tasman Island', region:'Tasman Peninsula', hero:{label:'From the Tasman Sea', az:150, el:22, d:1.6, target:'Cape Pillar', lead:0.08},
+ {id:'tasman', ve:4, name:'Cape Pillar & Tasman Island', region:'Tasman Peninsula', hero:{label:'From the Tasman Sea', az:150, el:22, d:1.6, target:'Cape Pillar', lead:0.08},
   blurb:'The highest sea cliffs in the Southern Hemisphere, dolerite columns falling 300 m to the ocean.'},
- {id:'stclair', name:'Lake St Clair & Mt Olympus', region:'Cradle Mountain–Lake St Clair NP', hero:{label:'From Cynthia Bay', az:170, el:24, d:1.6, target:'Mount Olympus', lead:0.08},
+ {id:'stclair', res0:25, ve:4, name:'Lake St Clair & Mt Olympus', region:'Cradle Mountain–Lake St Clair NP', hero:{label:'From Cynthia Bay', az:130, el:20, d:1.6, target:'Mount Olympus', lead:0.08},
   blurb:'Australia’s deepest lake, gouged by glaciers beneath Mt Olympus and Mt Ida.'},
- {id:'ossa', name:'Mt Ossa & the Pelions', region:'Overland Track', hero:{label:'From Pelion Plains', az:305, el:26, d:1.6, target:'Mount Ossa', lead:0.08},
+ {id:'ossa', ve:4, name:'Mt Ossa & the Pelions', region:'Overland Track', hero:{label:'From Pelion Plains', az:305, el:26, d:1.6, target:'Mount Ossa', lead:0.08},
   blurb:'Tasmania’s highest summit (1617 m) among the dolerite giants of the Overland Track.'},
- {id:'frenchmans', name:'Frenchmans Cap', region:'Franklin–Gordon Wild Rivers NP', hero:{label:'From the north', az:340, el:24, d:1.6, target:'Frenchmans Cap', lead:0.08},
+ {id:'frenchmans', res0:50, ve:3, name:'Frenchmans Cap', region:'Franklin–Gordon Wild Rivers NP', hero:{label:'From the north', az:30, el:35, d:1.6, target:'Frenchmans Cap', lead:0.08},
   blurb:'A white quartzite cap and sheer eastern face above Lake Tahune.'},
- {id:'federation', name:'Federation Peak', region:'Eastern Arthur Range', hero:{label:'From the south-west', az:215, el:24, d:1.6, target:'Federation Peak', lead:0.08},
+ {id:'federation', ve:4, name:'Federation Peak', region:'Eastern Arthur Range', hero:{label:'From the south-west', az:215, el:24, d:1.6, target:'Federation Peak', lead:0.08},
   blurb:'The most remote, hardest-won summit in Australia’s south-west wilderness.'},
- {id:'nut', ve:5, name:'The Nut, Stanley', region:'Circular Head', hero:{label:'From Bass Strait', az:100, el:22, d:1.1, target:'The Nut', lead:0.03, mix:0.2},
+ {id:'nut', res0:50, ve:5, name:'The Nut, Stanley', region:'Circular Head', hero:{label:'From Bass Strait', az:190, el:22, d:1.1, target:'The Nut', lead:0.03, mix:0.2},
   blurb:'A 143 m basalt volcanic plug tethered to the coast by a narrow isthmus.'},
+ {id:'tasmania', ve:20, veOpts:[5,10,20,40], name:'All of Tasmania', region:'lutruwita / Tasmania & Bass Strait', hero:{label:'From the south-west', az:205, el:40, d:1.6, target:[455000,5345000]},
+  blurb:'The whole island at 1 km, with the sea floor of Bass Strait. Lower the sea to the ice-age −120 m, or follow a raindrop to the sea.'},
 ];
 
 /* ================= ENGINE (pure data: terrain -> bricks) ================= */
@@ -207,8 +236,12 @@ const PITCH = 8, PLATE = 3.2, STUD_H = 1.7, GAP = 0.1;   // LEGO system dimensio
 const BASE = 1;                                            // one plate under the lowest point
 const SEA = 250;
 const SHELL_N = 40000;                                     // above this many studs, build the visible shell only
-let SC, R, FX, FY, E0, N1, DEMF, LAKEF, URBF, BLDF, LEV, SPOTS;        // scene + native (finest) grid
-let NX, NY, N, CELL, H_M, LAKE, URB, BH, Z0, SLOPE, SURF, FOREST, COAST, NZ1, NZ2, NZ3, NZ4, NZ5, FLOOD;
+let SC, R, FX, FY, E0, N1, DEMF, LAKEF, URBF, BLDF, LEV, SPOTS;
+let BATHY=false;              // scene has sea-floor depths in its SEA cells (AusBathyTopo)
+let GEO=null, GSU, GBU, GB;   // geology (loaded with the scene when available) and its per-model-cell fields
+let ICE=null, ICET=null;      // last-glaciation ice thickness grid (loaded on demand), per-model-cell thickness (m)
+let FIRE=null;                // fire history (loaded on demand)
+let NX, NY, N, CELL, H_M, LAKE, URB, BH, Z0, SLOPE, SURF, FOREST, COAST, NZ1, NZ2, NZ3, NZ4, NZ5, FLOOD, SEAW;
 
 const COL = [
  {k:'black',    n:'Black',             hex:0x1B2A34},
@@ -226,6 +259,14 @@ const COL = [
  {k:'dkblue',   n:'Dark Blue',         hex:0x0A3463},
  {k:'tdblue',   n:'Trans-Dark Blue',   hex:0x0020A0},
  {k:'sandblue', n:'Sand Blue',         hex:0x6074A1},
+ {k:'nougat',   n:'Nougat',            hex:0xD09168},
+ {k:'pink',     n:'Bright Pink',       hex:0xE4ADC8},
+ {k:'mdblue',   n:'Medium Blue',       hex:0x5A93DB},
+ {k:'lavender', n:'Medium Lavender',   hex:0xAC78BA},
+ {k:'red',      n:'Red',               hex:0xC91A09},
+ {k:'orange',   n:'Orange',            hex:0xFE8A18},
+ {k:'blorange', n:'Bright Light Orange',hex:0xF8BB3D},
+ {k:'tlblue',   n:'Trans-Light Blue',  hex:0xAEE9EF},
 ];
 const C = Object.fromEntries(COL.map((c,i)=>[c.k,i]));
 const WATER = C.tdblue;
@@ -242,7 +283,82 @@ async function loadScene(id){
   for(let y=0;y<FY;y++)for(let x=0;x<FX;x++){const i=y*FX+x; DEMF[i]= x? DEMF[i-1]+del[i] : (y? DEMF[i-FX]+del[i] : del[i]);}
   URBF = raw.length>=FX*FY*4 ? raw.slice(FX*FY*3,FX*FY*4) : (d.u ? await inflate(d.u) : new Uint8Array(FX*FY));
   BLDF = d.b ? await inflate(d.b) : null;   // building height, 0.5 m units per 25 m cell (Overture Maps)
+  BATHY = !!d.bathy;                         // SEA cells carry sea-floor height (m, ≤ −1) instead of 0
   SC.data=d;
+}
+async function fetchJSON(url){ const r=await fetch(url,{cache:'no-cache'}); if(!r.ok) throw new Error(`${url}: HTTP ${r.status}`); return r.json(); }
+
+// ---- Last-glaciation ice: thickness grid (gs m cells, metres, 0 = no ice) aligned with the scene origin (see glacial.py)
+async function loadIce(){
+  if(ICE && ICE.id===SC.id) return;
+  const g = SC.data.iceData || (SC.data.iceData = await fetchJSON(`data/${SC.id}_ice.json`));
+  const raw=await inflate(g.h), u=g.unit||2;   // thickness in `unit` m: Uint16 (dtype u2) or legacy Uint8
+  const h = g.dtype==='u2' ? new Uint16Array(raw.buffer, raw.byteOffset, raw.byteLength>>1) : raw;
+  ICE={id:SC.id, g, h, u};
+}
+function iceRes(){
+  ICET=null; if(!ICE || ICE.id!==SC.id) return;
+  const {gs,nx:gx,ny:gy}=ICE.g, h=ICE.h, U=ICE.u; ICET=new Float32Array(N);
+  if(CELL<gs){   // finer than the ice grid: bilinear ice fraction and thickness at the block centre
+    const at=(i,j)=>h[Math.min(gy-1,Math.max(0,j))*gx+Math.min(gx-1,Math.max(0,i))];
+    for(let r=0;r<NY;r++)for(let c=0;c<NX;c++){ const u=(c+0.5)*CELL/gs-0.5, w=(r+0.5)*CELL/gs-0.5, i0=Math.floor(u), j0=Math.floor(w), tx=u-i0, ty=w-j0;
+      let m=0,t=0; for(const [di,dj,wt] of [[0,0,(1-tx)*(1-ty)],[1,0,tx*(1-ty)],[0,1,(1-tx)*ty],[1,1,tx*ty]]){ const v=at(i0+di,j0+dj); if(v){m+=wt;t+=wt*v*U;} }
+      if(m>=0.5) ICET[r*NX+c]=t/m; }
+  } else {       // coarser: ice where >= half the ice cells are glaciated; mean thickness of those
+    const f=Math.round(CELL/gs);
+    for(let r=0;r<NY;r++)for(let c=0;c<NX;c++){ let n=0,s=0; for(let a=0;a<f;a++)for(let b=0;b<f;b++){ const v=h[(r*f+a)*gx+c*f+b]; if(v){n++;s+=v*U;} }
+      if(n*2>=f*f) ICET[r*NX+c]=s/n; }
+  }
+}
+
+// ---- Fire history: per 25 m cell up to K fire ids (most recent first) into a table of [season start year, type 0 bushfire|1 planned|2 unknown, name, km²]
+async function loadFire(){
+  if(FIRE && FIRE.id===SC.id) return;
+  const g = SC.data.fireData || (SC.data.fireData = await fetchJSON(`data/${SC.id}_fire.json`));
+  const raw=await inflate(g.f); FIRE={id:SC.id, g, K:g.K, f:new Uint16Array(raw.buffer, raw.byteOffset, raw.byteLength>>1)};
+  const s=g.fires.map(x=>x[0]); FIRE.y0=s.reduce((m,v)=>v<m?v:m,9999); FIRE.y1=s.reduce((m,v)=>v>m?v:m,0);
+}
+// class of the most recent fire up to season `year`: 1 bushfire this season, 2 bushfire 1–5 y before, 3 6–20 y, 4 21–60 y, 5 planned burn ≤ 20 y; 0 none
+const FIRECOL=[-1,'red','orange','blorange','nougat','lavender'];
+function fireClasses(year){
+  const out=new Uint8Array(N); if(!FIRE || FIRE.id!==SC.id) return out;
+  const {K,f,g}=FIRE, fires=g.fires, ff=CELL/R, cnt=new Uint16Array(6);
+  const cls=j=>{ for(let k=0;k<K;k++){ const id=f[j*K+k]; if(!id) return 0; const [s,t]=fires[id-1]; if(s>year) continue; const a=year-s;
+      if(t===1) return a<=20?5:0; return a===0?1 : a<=5?2 : a<=20?3 : a<=60?4 : 0; } return 0; };
+  for(let r=0;r<NY;r++)for(let c=0;c<NX;c++){ cnt.fill(0);
+    for(let a=0;a<ff;a++)for(let b=0;b<ff;b++) cnt[cls((r*ff+a)*FX+c*ff+b)]++;
+    if((ff*ff-cnt[0])*2 < ff*ff) continue; let bk=1; for(let k=2;k<6;k++) if(cnt[k]>cnt[bk]) bk=k; out[r*NX+c]=bk; }
+  return out;
+}
+
+// ---- Geology (MRT mapping + 2.5D layer-cake subsurface; see geology.py). Loaded with the scene when available.
+async function loadGeo(){
+  if(GEO && GEO.id===SC.id) return;
+  let g = SC.data.geoData;
+  if(!g){ const r=await fetch(`data/${SC.id}_geo.json`,{cache:'no-cache'}); if(!r.ok) throw new Error(`data/${SC.id}_geo.json: HTTP ${r.status}`); g=await r.json(); SC.data.geoData=g; }
+  const su=await inflate(g.su), bu=await inflate(g.bu), raw=g.bs? await inflate(g.bs) : new Uint8Array(0);
+  const bs=new Int16Array(raw.buffer, raw.byteOffset, raw.byteLength>>1), K=g.layers.length;
+  const col=[C.lbg], cls=['none'], layerOf=[0];
+  g.units.forEach(u=>{ col.push(C[u.col]??C.lbg); cls.push(u.cls); layerOf.push(0); });
+  g.layers.forEach((ids,k)=>ids.forEach(u=>layerOf[u]=k+1));
+  GEO={id:SC.id, g, su, bu, bs, K, col, cls, layerOf, layerCol:g.layers.map(ids=>col[ids[0]])};
+}
+const geoSub = () => !!(GEO && GEO.id===SC.id);                      // rock in walls and slices (default)
+const geoMap = () => geoSub() && state.geo && state.mode!=='fire';     // mapped unit on the top plate
+function geoRes(){
+  if(!GEO || GEO.id!==SC.id) return;
+  const f=CELL/R, K=GEO.K, {su,bu,bs,g}=GEO; GSU=new Uint8Array(N); GBU=new Uint8Array(N); GB=new Float32Array(N*K);
+  const maj=(A,r,c)=>{ const cnt=new Map(); let bv=0,bn=0; for(let a=0;a<f;a++)for(let b=0;b<f;b++){ const v=A[(r*f+a)*FX+c*f+b]; if(!v) continue; const n=(cnt.get(v)||0)+1; cnt.set(v,n); if(n>bn){bn=n;bv=v;} } return bv; };
+  const bil=(k,x,y)=>{ const gx=Math.min(g.gnx-1.001,Math.max(0,x/g.gs)), gy=Math.min(g.gny-1.001,Math.max(0,y/g.gs)), i0=Math.floor(gx), j0=Math.floor(gy), tx=gx-i0, ty=gy-j0, o=k*g.gnx*g.gny;
+    const v=(i,j)=>bs[o+j*g.gnx+i]; return (1-ty)*((1-tx)*v(i0,j0)+tx*v(i0+1,j0)) + ty*((1-tx)*v(i0,j0+1)+tx*v(i0+1,j0+1)); };
+  for(let r=0;r<NY;r++)for(let c=0;c<NX;c++){ const i=r*NX+c; GSU[i]=maj(su,r,c); GBU[i]=maj(bu,r,c);
+    const x=(c+0.5)*CELL, y=(r+0.5)*CELL, gz=H_M[i], u=GSU[i];
+    const li = GEO.cls[u]==='basement' ? K+1 : GEO.layerOf[u];          // mapped bedrock layer (0 = cover/unknown)
+    for(let k=0;k<K;k++){ let B=bil(k,x,y);
+      if(li>0){ if(k+1<li) B=Math.max(B,gz+0.5); else B=Math.min(B,gz-0.5); }   // honour the surface map
+      GB[i*K+k]=B; }
+    for(let k=K-2;k>=0;k--) if(GB[i*K+k]<GB[i*K+k+1]) GB[i*K+k]=GB[i*K+k+1];      // older bases lie lower
+  }
 }
 
 function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
@@ -259,7 +375,7 @@ function setRes(res){
   const best = new Map();
   for(let r=0;r<NY;r++)for(let c=0;c<NX;c++){
     let s=0,ns=0,u1=0,u2=0; const cnt={};
-    for(let a=0;a<f;a++)for(let b=0;b<f;b++){const j=(r*f+a)*FX+c*f+b; const k=LAKEF[j]; if(k) cnt[k]=(cnt[k]||0)+1; if(k!==SEA){s+=DEMF[j];ns++;} if(URBF[j]===1)u1++; else if(URBF[j]===2)u2++;}
+    for(let a=0;a<f;a++)for(let b=0;b<f;b++){const j=(r*f+a)*FX+c*f+b; const k=LAKEF[j]; if(k) cnt[k]=(cnt[k]||0)+1; if(k!==SEA||BATHY){s+=DEMF[j];ns++;} if(URBF[j]===1)u1++; else if(URBF[j]===2)u2++;}
     const i=r*NX+c; H_M[i]= ns? s/ns : 0; if((u1+u2)*2>=f*f) URB[i]= u1>=u2?1:2;
     if(BLDF){ let bs=0,bn=0; for(let a=0;a<f;a++)for(let b=0;b<f;b++){const v=BLDF[(r*f+a)*FX+c*f+b]; if(v){bs+=v;bn++;}}
       if(bn*4>=f*f) BH[i]=bs/bn/2; }   // mean height of built 25 m cells, where >= 25% of the block is built
@@ -270,11 +386,12 @@ function setRes(res){
   for(const [k,e] of best) if(!LAKE.includes(k) && e.n*4>=f*f && !LAKE[e.i]) LAKE[e.i]=k;
   for(const [e,n,z] of SPOTS){ const c=Math.floor((e-E0)/res), r=Math.floor((N1-n)/res); if(c>=0&&c<NX&&r>=0&&r<NY){const i=r*NX+c; if(!LAKE[i]) H_M[i]=Math.max(H_M[i],z);} }
   const seen=new Uint8Array(N);
-  for(let i0=0;i0<N;i0++){ if(!LAKE[i0]||seen[i0]) continue; const k=LAKE[i0], comp=[i0]; seen[i0]=1;
+  for(let i0=0;i0<N;i0++){ if(!LAKE[i0]||seen[i0]||(BATHY&&LAKE[i0]===SEA)) continue; const k=LAKE[i0], comp=[i0]; seen[i0]=1;   // lakes flat at their level; sea keeps its floor
     for(let q=0;q<comp.length;q++){const i=comp[q],x=i%NX,y=(i/NX)|0; for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const xx=x+dx,yy=y+dy; if(xx<0||yy<0||xx>=NX||yy>=NY) continue; const j=yy*NX+xx; if(!seen[j]&&LAKE[j]===k){seen[j]=1;comp.push(j);}}}
     const lev = (LEV[k]>0||k===SEA) ? LEV[k] : comp.reduce((m,i)=>H_M[i]<m?H_M[i]:m,Infinity);
     for(const i of comp) H_M[i]=lev; }
   Z0 = H_M.reduce((m,v)=>v<m?v:m,Infinity);
+  geoRes(); iceRes();
   const sc = 100/res * ((SC.data.r0||R)>=50 ? 0.5 : 1);
   NZ1 = field(11,Math.max(1,Math.round(2*sc))); NZ2 = field(23,Math.max(1,Math.round(3*sc))); NZ3 = field(37,Math.max(1,Math.round(4*sc))); NZ4 = field(41,Math.max(1,Math.round(2*sc))); NZ5 = field(53,1);
   SLOPE = new Float32Array(N);
@@ -312,6 +429,36 @@ function floodMask(slr, Hm, Lk, nx, ny){
   for(let i=0;i<n;i++) if(Lk[i]===SEA) F[i]=0; // report only newly flooded land/lakes
   return F; }
 
+// Which SEA cells hold water at sea level slr. At or above today's level every sea cell does (sea floor <= -1 m).
+// Below it (needs bathymetry): sea floor below slr and connected, through such cells, to open water at the model edge.
+function seaWet(slr, Hm, Lk, nx, ny){
+  const n=nx*ny, W=new Uint8Array(n);
+  if(!(slr<0) || !BATHY){ for(let i=0;i<n;i++) if(Lk[i]===SEA) W[i]=1; return W; }
+  const q=[], ok=i=>Lk[i]===SEA && Hm[i]<slr;
+  for(let x=0;x<nx;x++) for(const y of [0,ny-1]){ const i=y*nx+x; if(!W[i]&&ok(i)){W[i]=1;q.push(i);} }
+  for(let y=1;y<ny-1;y++) for(const x of [0,nx-1]){ const i=y*nx+x; if(!W[i]&&ok(i)){W[i]=1;q.push(i);} }
+  for(let h=0;h<q.length;h++){const i=q[h],x=i%nx,y=(i/nx)|0;
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const xx=x+dx,yy=y+dy; if(xx<0||yy<0||xx>=nx||yy>=ny) continue; const j=yy*nx+xx; if(!W[j]&&ok(j)){W[j]=1;q.push(j);} }}
+  return W; }
+
+// Drainage: Priority-Flood + ε (Barnes, Lehman & Mulla 2014) fills depressions, then D8 steepest descent on the filled
+// surface. Outlets: wet cells (sea / flooded) and the model edge. Returns receiver (-1 at outlets) and outlet of every cell.
+function drainage(Hm, outlet, nx, ny, cell){
+  const n=nx*ny, F=new Float64Array(n), done=new Uint8Array(n), order=new Int32Array(n); let no=0;
+  const hk=new Float64Array(n+8), hv=new Int32Array(n+8); let hn=0;           // binary min-heap (a cell is pushed once)
+  const push=(i,k)=>{ let p=hn++; while(p>0){ const u=(p-1)>>1; if(hk[u]<=k) break; hk[p]=hk[u]; hv[p]=hv[u]; p=u; } hk[p]=k; hv[p]=i; };
+  const pop=()=>{ const top=hv[0], k=hk[--hn], v=hv[hn]; let p=0; for(;;){ let c=2*p+1; if(c>=hn) break; if(c+1<hn&&hk[c+1]<hk[c]) c++; if(hk[c]>=k) break; hk[p]=hk[c]; hv[p]=hv[c]; p=c; } hk[p]=k; hv[p]=v; return top; };
+  const EPS=1e-3, D8=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,Math.SQRT2],[1,-1,Math.SQRT2],[-1,1,Math.SQRT2],[-1,-1,Math.SQRT2]];
+  for(let i=0;i<n;i++){ const x=i%nx,y=(i/nx)|0; if(outlet[i]||x===0||y===0||x===nx-1||y===ny-1){ F[i]=Hm[i]; done[i]=1; push(i,F[i]); } }
+  while(hn){ const c=pop(); order[no++]=c; const x=c%nx,y=(c/nx)|0;
+    for(const [dx,dy] of D8){ const xx=x+dx,yy=y+dy; if(xx<0||yy<0||xx>=nx||yy>=ny) continue; const j=yy*nx+xx; if(done[j]) continue;
+      done[j]=1; F[j]=Math.max(Hm[j], F[c]+EPS); push(j,F[j]); } }
+  const rec=new Int32Array(n).fill(-1), root=new Int32Array(n);
+  for(let i=0;i<n;i++){ const x=i%nx,y=(i/nx)|0; if(outlet[i]||x===0||y===0||x===nx-1||y===ny-1) continue;
+    let best=0,bj=-1; for(const [dx,dy,d] of D8){ const j=(y+dy)*nx+x+dx, s=(F[i]-F[j])/d; if(s>best){best=s;bj=j;} } rec[i]=bj; }
+  for(let k=0;k<no;k++){ const i=order[k]; root[i]= rec[i]<0 ? i : root[rec[i]]; }   // receivers are popped first (F strictly lower)
+  return {F, rec, root}; }
+
 // parts catalogue (LEGO design IDs)
 const SIZES = [[2,8],[2,6],[2,4],[1,8],[1,6],[2,3],[1,4],[2,2],[1,3],[1,2],[1,1]];
 const IDS = {
@@ -321,37 +468,62 @@ const IDS = {
 };
 const KIND = {B:{h:3,name:'Brick'},P:{h:1,name:'Plate'},T:{h:1,name:'Tile'}};
 
-function build(ve, snow, slr){
+// o: {ve, snow, slr, bldg, geoMap, lgm, fireYear (null = no fire colouring)}
+function build(o){
+  const {ve}=o; let {snow,slr}=o; if(!BATHY) slr=Math.max(0,slr);
   const mPerPlate = 0.4*CELL/ve;                 // true scale: 3.2 mm plate × (CELL m / 8 mm stud) = 0.4·CELL m
   const q = m => BASE + Math.max(0, Math.round((m - Z0)/mPerPlate));
-  FLOOD = floodMask(slr, H_M, LAKE, NX, NY);
-  const WET = new Uint8Array(N); for(let i=0;i<N;i++) WET[i] = LAKE[i]||FLOOD[i] ? 1:0;
-  const H = new Int16Array(N);
+  FLOOD = floodMask(slr, H_M, LAKE, NX, NY); SEAW = seaWet(slr, H_M, LAKE, NX, NY);
+  // Ice-age glaciers: plates of ice on today's ground (not on the sea)
+  const IP = new Uint8Array(N);
+  const ISKIN = new Uint8Array(N);                 // ice thinner than half a plate: whitens the top plate instead
+  if(o.lgm && ICET) for(let i=0;i<N;i++) if(ICET[i]>0 && LAKE[i]!==SEA){ const n=Math.round(ICET[i]/mPerPlate); if(n>0) IP[i]=Math.min(250,n); else ISKIN[i]=1; }
+  const WET = new Uint8Array(N); for(let i=0;i<N;i++) WET[i] = !IP[i] && !ISKIN[i] && (LAKE[i]===SEA ? SEAW[i] : (LAKE[i]||FLOOD[i])) ? 1:0;
+  const EXPO = new Uint8Array(N); for(let i=0;i<N;i++) if(LAKE[i]===SEA && !WET[i]) EXPO[i]=1;      // sea floor exposed by a lower sea
+  const H = new Int16Array(N), BED = new Int16Array(N);
   for(let i=0;i<N;i++){
-    if(LAKE[i]===SEA) H[i]=q(Math.max(0,slr));
+    if(WET[i] && LAKE[i]===SEA){ H[i]=q(slr); BED[i]=Math.min(q(H_M[i]), H[i]-1); }   // water column over the sea floor
     else if(FLOOD[i]) H[i]=q(slr);                  // water surface level with the (raised) sea
     else H[i]=q(H_M[i]); }
   for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=y*NX+x; if(WET[i]) continue;
     for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const xx=x+dx,yy=y+dy; if(xx<0||yy<0||xx>=NX||yy>=NY) continue; const j=yy*NX+xx; if(WET[j]&&H[i]<H[j]) H[i]=H[j];}}
   // Buildings: plates on top of the terrain column (not on water or flooded cells); at least one plate where built.
   const BP = new Uint8Array(N);
-  if(state.bldg && BLDF) for(let i=0;i<N;i++) if(BH[i]>0 && !WET[i]){ const nb=Math.max(1,Math.round(BH[i]/mPerPlate)); BP[i]=Math.min(250,nb); H[i]+=BP[i]; }
+  if(o.bldg && BLDF) for(let i=0;i<N;i++) if(BH[i]>0 && !WET[i] && !IP[i]){ const nb=Math.max(1,Math.round(BH[i]/mPerPlate)); BP[i]=Math.min(250,nb); H[i]+=BP[i]; }
+  for(let i=0;i<N;i++) H[i]+=IP[i];
   let maxH=0; for(let i=0;i<N;i++) if(H[i]>maxH) maxH=H[i];
   const VIS = new Int16Array(N);
   for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=y*NX+x;
     if(x===0||y===0||x===NX-1||y===NY-1){VIS[i]=0;continue;}
     VIS[i]=Math.min(H[i]-1,H[i-1],H[i+1],H[i-NX],H[i+NX]);}
+  const GS = geoSub(), GM = GS && o.geoMap; if(GM) snow=false;
+  const FC = o.fireYear!=null ? fireClasses(o.fireYear) : null;
   const snowTop = new Uint8Array(N);
-  if(snow) for(let i=0;i<N;i++) if(!WET[i] && !BP[i] && H_M[i] >= 1215 + 70*NZ3[i] && SLOPE[i] < 44) snowTop[i]=1;
+  if(snow) for(let i=0;i<N;i++) if(!WET[i] && !BP[i] && !IP[i] && !EXPO[i] && H_M[i] >= 1215 + 70*NZ3[i] && SLOPE[i] < 44) snowTop[i]=1;
+  for(let i=0;i<N;i++) if(ISKIN[i] && !BP[i]) snowTop[i]=1;
   const substrate = (i,z) => { const e = Z0 + (z-BASE+0.5)*mPerPlate, v = (NZ4[i]*2.3 + Math.floor(z/3)*0.618)%1;
     return e>=1120 ? (v<0.78?C.dbg:C.lbg) : (v<0.68?C.rbrown:C.dkbrown); };
+  const geoCol = (i,z) => { const e = Z0 + (z-BASE+0.5)*mPerPlate, u=GSU[i], K=GEO.K;
+    if(u && GEO.cls[u]==='cover' && e > H_M[i]-GEO.g.tq) return GEO.col[u];
+    for(let k=0;k<K;k++) if(e >= GB[i*K+k]) return GEO.layerCol[k];
+    return GBU[i] ? GEO.col[GBU[i]] : C.lbg; };
+  const rock = (i,z) => z<BASE ? C.black : GS ? geoCol(i,z) : substrate(i,z);
+  const expCol = i => { const x=i%NX, y=(i/NX)|0; for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const xx=x+dx,yy=y+dy; if(xx>=0&&yy>=0&&xx<NX&&yy<NY&&SEAW[yy*NX+xx]) return SAND; } return C.dktan; };
   const colourAt = (i,z) => {
-    if(WET[i]){ if(z===H[i]-1) return WATER; if(z===H[i]-2) return FLOOD[i]&&SURF[i]!==WATER ? SURF[i] : C.dkblue; return z<BASE?C.black:substrate(i,z); }
+    if(IP[i] && z>=H[i]-IP[i]) return C.white;                                   // glacier ice
+    if(WET[i]){ if(z===H[i]-1) return WATER;
+      if(LAKE[i]===SEA && BATHY){ const b=BED[i]; return z>=b ? C.dkblue : z===b-1 ? SAND : rock(i,z); }   // water column, sandy floor
+      if(z===H[i]-2) return FLOOD[i]&&SURF[i]!==WATER ? SURF[i] : C.dkblue; return rock(i,z); }
     if(BP[i] && z>=H[i]-BP[i]) return BH[i]<9 ? C.white : BH[i]<25 ? C.lbg : C.sandblue;   // building (height class)
-    const top = FOREST[i]?3:2, Ht = H[i]-BP[i];
+    const Ht = H[i]-BP[i]-IP[i];
+    if(IP[i]) return rock(i,z);                                                  // bedrock under the ice
+    if(EXPO[i]) return z===Ht-1 ? expCol(i) : rock(i,z);
+    if(z===Ht-1 && FC && FC[i]) return C[FIRECOL[FC[i]]];
+    if(GM){ if(z<BASE && z<Ht-1) return C.black; return z===Ht-1 ? (ISKIN[i]?C.white:GSU[i]?GEO.col[GSU[i]]:SURF[i]) : geoCol(i,z); }   // top plate = mapped unit
+    const top = GS ? (FOREST[i]?2:1) : (FOREST[i]?3:2);
     if(z<BASE && z<Ht-top) return C.black;
     if(z>=Ht-top) return (z===Ht-1 && snowTop[i]) ? C.white : SURF[i];
-    return substrate(i,z);
+    return rock(i,z);
   };
   // Build layer by layer (memory O(N)). Large grids build only the visible shell; the hidden infill is estimated.
   const SHELL = N > SHELL_N;
@@ -380,8 +552,8 @@ function build(ve, snow, slr){
   for(const p of parts){ if(p.k==='T') continue; const t=p.z+KIND[p.k].h;
     for(let yy=p.y;yy<p.y+p.d;yy++)for(let xx=p.x;xx<p.x+p.w;xx++){const j=yy*NX+xx;
       if(t===H[j]) studsTop.push({x:xx,y:yy,t,c:p.c}); else if(!SHELL) studsCut.push({x:xx,y:yy,t,c:p.c});}}
-  const canopy=[]; for(let i=0;i<N;i++) if(FOREST[i] && !BP[i] && !WET[i] && !snowTop[i] && NZ5[i]>0.5) canopy.push({x:i%NX,y:(i/NX)|0,t:H[i],c:(NZ5[i]>0.8?C.green:C.dkgreen)});
-  return {H,maxH,parts,studsTop,studsCut,canopy,mPerPlate,SHELL,hiddenEst:Math.round(hiddenPlates/24)};
+  const canopy=[]; if(!GM) for(let i=0;i<N;i++) if(FOREST[i] && !BP[i] && !WET[i] && !IP[i] && !snowTop[i] && !(FC && FC[i]>0 && FC[i]<3) && NZ5[i]>0.5) canopy.push({x:i%NX,y:(i/NX)|0,t:H[i],c:(NZ5[i]>0.8?C.green:C.dkgreen)});
+  return {H,maxH,parts,studsTop,studsCut,canopy,mPerPlate,SHELL,hiddenEst:Math.round(hiddenPlates/24),WET,IP,ISKIN,FC,slr};
 }
 
 /* ================= RENDERER ================= */
@@ -433,7 +605,8 @@ const lakeId = name => { const i=(SC.data.lakes||[]).findIndex(n=>n.toUpperCase(
 
 function rebuild(){
   if(model){ scene.remove(model); model.traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); }
-  S=build(state.ve,state.snow,state.slr);
+  const fire = state.mode==='fire' && FIRE && FIRE.id===SC.id;
+  S=build({ve:state.ve, snow:state.snow && !fire, slr:fire?0:state.slr, bldg:state.bldg, geoMap:geoMap(), lgm:state.lgm && !fire, fireYear:fire?state.fireYear:null});
   model=new THREE.Group(); scene.add(model);
   const groups={}, hidden=[];
   for(const p of S.parts){ if(!p.vis){hidden.push(p);continue;} const key=p.k+Math.min(p.w,p.d)+'x'+Math.max(p.w,p.d)+(p.c===WATER?'w':''); (groups[key]||(groups[key]=[])).push(p); }
@@ -452,17 +625,84 @@ function rebuild(){
   S.canopyMesh=inst(S.SHELL?roundPlateGeoLo:roundPlateGeo,plastic,S.canopy,(s,M)=>M.makeTranslation((s.x+.5)*PITCH,s.t*PLATE,(s.y+.5)*PITCH)); S.canopyMesh.userData.z=S.canopy.map(s=>s.t); S.canopyMesh.visible=state.trees; model.add(S.canopyMesh);
   S.shed=[]; S.shedH=0;
   S.extraParts=[{k:'Plate, Round 1x1',id:'4073',c:C.dkgreen,n:S.canopy.filter(s=>s.c===C.dkgreen).length},{k:'Plate, Round 1x1',id:'4073',c:C.green,n:S.canopy.filter(s=>s.c===C.green).length}];
-  if(SC.extra==='boatshed'){ const bs=boatshedCell(); if(bs){ const bsH=S.H[bs.y*NX+bs.x];
+  if(SC.extra==='boatshed'){ const bs=boatshedCell(); if(bs && !S.IP[bs.y*NX+bs.x] && !S.ISKIN[bs.y*NX+bs.x]){ const bsH=S.H[bs.y*NX+bs.x];
     const shed=new THREE.Mesh(partGeo('P',1,1),new THREE.MeshStandardMaterial({color:COL[C.rbrown].hex,roughness:.32})); shed.position.set((bs.x+.5)*PITCH,bsH*PLATE,(bs.y+.5)*PITCH);
     const roofShape=new THREE.Shape([new THREE.Vector2(-3.9,0),new THREE.Vector2(3.9,0),new THREE.Vector2(0,3.6)]);
     const roof=new THREE.Mesh(new THREE.ExtrudeGeometry(roofShape,{depth:7.8,bevelEnabled:false}),new THREE.MeshStandardMaterial({color:COL[C.dbg].hex,roughness:.32}));
     roof.position.set((bs.x+.5)*PITCH,(bsH+1)*PLATE,(bs.y+.5)*PITCH-3.9); shed.castShadow=roof.castShadow=true; model.add(shed,roof); S.shed=[shed,roof]; S.shedH=bsH;
     S.extraParts.push({k:'Plate 1x1 (boatshed)',id:'3024',c:C.rbrown,n:1},{k:'Slope 30 1x1x2/3 (roof)',id:'54200',c:C.dbg,n:1}); } }
+  // water drops live in the model group, so any rebuild clears them
+  S.drops=[]; S.route=null; S.basin=null; S.trail=null; S.dropMesh=null;
+  if(state.mode==='water') prepWater();
   stepMax=S.maxH-1; const st=document.getElementById('step'); st.max=stepMax; st.value=stepMax; applyStep(stepMax);
-  updateStats(); placeLabels();
+  updateStats(); placeLabels(); modeReadout();
 }
 function boatshedCell(){ const k=lakeId('Dove Lake'); if(k<0) return null;
   const y=Math.floor((N1-5388300)/CELL); for(let x=Math.floor((412150-E0)/CELL);x<NX;x++){const i=y*NX+x; if(LAKE[i]===k) return {x:x-1,y};} return null; }
+
+// ---- water drop: routing on the current model, a Trans-Light Blue round plate that runs downhill leaving round tiles
+const tileRoundGeo=(()=>{const pts=[[0,0],[3.9,0],[3.9,3.0],[3.7,3.2],[0,3.2]].map(p=>new THREE.Vector2(p[0],p[1])); return new THREE.LatheGeometry(pts,20);})();
+const dropMat=new THREE.MeshStandardMaterial({color:COL[C.tlblue].hex,roughness:0.08,metalness:0,transparent:true,opacity:0.82,envMapIntensity:1.0});
+const trailMat=new THREE.MeshStandardMaterial({color:COL[C.mdblue].hex,roughness:0.3,metalness:0,envMapIntensity:0.6});
+const basinMat=new THREE.MeshBasicMaterial({color:0x9fe3ff,transparent:true,opacity:0.38,depthWrite:false});
+const MAXTRAIL=8000;
+let DROP=null;   // running animation {path, t0, step}
+function prepWater(){
+  const out=new Uint8Array(N); for(let i=0;i<N;i++) if(S.WET[i] && (LAKE[i]===SEA || FLOOD[i])) out[i]=1;   // sea and flooded land are outlets
+  S.route=drainage(H_M, out, NX, NY); S.outlet=out;
+  S.trail=new THREE.InstancedMesh(tileRoundGeo,trailMat,MAXTRAIL); S.trail.count=0; S.trail.castShadow=true; model.add(S.trail);
+  S.dropMesh=new THREE.Mesh(roundPlateGeo,dropMat); S.dropMesh.visible=false; S.dropMesh.castShadow=true; model.add(S.dropMesh);
+  DROP=null;
+}
+const topY = i => S.H[i]*PLATE;
+function releaseDrop(i0){
+  if(!S.route) return;
+  if(S.WET[i0] && S.outlet[i0]){ waterSay('That spot is already sea. Tap the land.'); return; }
+  const {rec,root}=S.route, path=[i0]; for(let i=i0; rec[i]>=0; i=rec[i]) path.push(rec[i]);
+  // catchment of the outlet reached: every block draining to the same outlet
+  const r0=root[i0], cells=[]; for(let i=0;i<N;i++) if(root[i]===r0 && !S.WET[i]) cells.push(i);
+  if(S.basin){ model.remove(S.basin); S.basin.dispose(); }
+  S.basin=new THREE.InstancedMesh(unitBox,basinMat,Math.max(1,cells.length)); S.basin.renderOrder=3; S.basin.count=cells.length;
+  const sc=new THREE.Vector3(PITCH,0.3,PITCH);
+  cells.forEach((i,k)=>{ S.basin.setMatrixAt(k, tmpM.compose(v.set((i%NX+.5)*PITCH, topY(i)+STUD_H+0.15, (((i/NX)|0)+.5)*PITCH), q0, sc)); });
+  S.basin.instanceMatrix.needsUpdate=true; model.add(S.basin);
+  DROP={path, t0:performance.now(), step:Math.min(140,Math.max(18,7000/path.length)), laid:0, basinKm2:cells.length*CELL*CELL/1e6};
+  S.dropMesh.visible=true; waterSay('The drop is on its way…');
+}
+function dropTick(now){
+  if(!DROP || !S.dropMesh) return; const {path,step}=DROP, u=(now-DROP.t0)/step, k=Math.min(path.length-1,Math.floor(u)), f=Math.min(1,u-k);
+  const a=path[k], b=path[Math.min(path.length-1,k+1)];
+  const xa=(a%NX+.5)*PITCH, za=(((a/NX)|0)+.5)*PITCH, xb=(b%NX+.5)*PITCH, zb=(((b/NX)|0)+.5)*PITCH;
+  S.dropMesh.position.set(xa+(xb-xa)*f, Math.max(topY(a),topY(b))+(S.WET[a]?0:PLATE)+1.2*Math.abs(Math.sin(u*Math.PI)), za+(zb-za)*f);
+  while(DROP.laid<=k && DROP.laid<path.length){ const i=path[DROP.laid++]; if(S.WET[i] || S.trail.count>=MAXTRAIL) continue;
+    S.trail.setMatrixAt(S.trail.count, tmpM.makeTranslation((i%NX+.5)*PITCH, topY(i), (((i/NX)|0)+.5)*PITCH)); S.trail.count++; S.trail.instanceMatrix.needsUpdate=true; }
+  if(u>=path.length-1){ const d=DROP; DROP=null; S.dropMesh.position.y=topY(path[path.length-1])+(S.WET[path[path.length-1]]?0:PLATE); waterReport(d); }
+}
+function waterReport(d){
+  const p=d.path, i0=p[0], iN=p[p.length-1]; let len=0; for(let k=1;k<p.length;k++){ const a=p[k-1],b=p[k]; len+= (a%NX!==b%NX && ((a/NX)|0)!==((b/NX)|0)) ? Math.SQRT2 : 1; } len*=CELL/1000;
+  const lakes=[]; for(const i of p){ const k=LAKE[i]; if(k && k!==SEA && k!==99){ const nm=(SC.data.lakes||[])[k-1]; if(nm && !lakes.includes(nm)) lakes.push(nm); } }
+  const x=iN%NX, y=(iN/NX)|0; let end;
+  if(S.outlet[iN]){ const E=E0+(x+.5)*CELL, Nn=N1-(y+.5)*CELL; let best=null,bd=15000;
+    for(const [nm,e,n] of (SC.data.outlets||[])){ const dd=Math.hypot(e-E,n-Nn); if(dd<bd){bd=dd;best=nm;} }
+    end = best ? `reaches the sea at <b>${best}</b>` : (FLOOD[iN] ? 'reaches the raised sea' : 'reaches the sea'); }
+  else end = `leaves the model at the ${y===0?'northern':y===NY-1?'southern':x===0?'western':'eastern'} edge (it keeps going beyond the scene)`;
+  const z0=H_M[i0], z1=S.WET[iN]? (S.outlet[iN]?S.slr:H_M[iN]) : H_M[iN];
+  waterSay(`From <b>${fmt(Math.round(z0))} m</b> the drop ${end}${lakes.length?`, via ${lakes.join(', ')}`:''}: <b>${len.toFixed(len<10?1:0)} km</b> downhill, falling <b>${fmt(Math.round(z0-z1))} m</b>. `+
+    `The haze shows its catchment within the model: <b>${fmt(Math.round(d.basinKm2*10)/10)} km²</b>${S.outlet[iN]?'':' so far'}.`);
+}
+function clearDrops(){ DROP=null; if(S.trail){ S.trail.count=0; } if(S.dropMesh) S.dropMesh.visible=false; if(S.basin){ model.remove(S.basin); S.basin.dispose(); S.basin=null; } }
+// pick the model cell under the pointer by marching the view ray through the block heights
+const raycaster=new THREE.Raycaster(), ndc=new THREE.Vector2();
+function pickCell(ev){
+  const rc=renderer.domElement.getBoundingClientRect(); ndc.set((ev.clientX-rc.left)/rc.width*2-1, -(ev.clientY-rc.top)/rc.height*2+1);
+  raycaster.setFromCamera(ndc,camera); const o=raycaster.ray.origin, d=raycaster.ray.direction;
+  let t0=0, t1=1e7; for(const [a,lo,hi] of [['x',0,W],['y',0,S.maxH*PLATE],['z',0,Dp]]){
+    if(Math.abs(d[a])<1e-12){ if(o[a]<lo||o[a]>hi) return -1; continue; }
+    let ta=(lo-o[a])/d[a], tb=(hi-o[a])/d[a]; if(ta>tb) [ta,tb]=[tb,ta]; t0=Math.max(t0,ta); t1=Math.min(t1,tb); }
+  if(t0>t1) return -1;
+  for(let t=t0; t<=t1; t+=PITCH*0.2){ const x=o.x+d.x*t, y=o.y+d.y*t, z=o.z+d.z*t, c=Math.floor(x/PITCH), r=Math.floor(z/PITCH);
+    if(c<0||r<0||c>=NX||r>=NY) continue; if(y<=topY(r*NX+c)) return r*NX+c; }
+  return -1; }
 
 function applyStep(k){
   const full = k>=stepMax;
@@ -474,12 +714,16 @@ function applyStep(k){
   cut.forEach((s,i)=>{tmpM.makeTranslation((s.x+.5)*PITCH,s.t*PLATE,(s.y+.5)*PITCH); S.cutMesh.setMatrixAt(i,tmpM); S.cutMesh.setColorAt(i,colour(s.c));});
   S.cutMesh.count=cut.length; S.cutMesh.instanceMatrix.needsUpdate=true; if(S.cutMesh.instanceColor) S.cutMesh.instanceColor.needsUpdate=true;
   S.shed.forEach(o=>o.visible=k>=S.shedH);
+  for(const o of [S.trail,S.dropMesh,S.basin]) if(o) o.visible=full;
   document.getElementById('stepOut').textContent = full? 'complete' : `layer ${k+1} of ${stepMax+1} · ${(Z0+(k+1-BASE)*S.mPerPlate).toFixed(0)} m`;
   document.getElementById('labels').style.visibility = full&&state.labels ? 'visible':'hidden';
 }
 
 /* ================= UI ================= */
-const state={scene:'cradle',tier:2,res:100,ve:2,snow:true,labels:true,trees:true,bldg:true,view:'hero',slr:0};
+const state={scene:'cradle',tier:2,res:100,ve:2,snow:true,labels:true,trees:true,bldg:true,geo:false,view:'hero',slr:0,mode:'land',lgm:false,fireYear:null};
+// Phones and tablets: open at the coarsest resolution (users can still step up)
+const MOBILE = matchMedia("(pointer: coarse)").matches && Math.min(screen.width, screen.height) <= 820;
+if(MOBILE) state.tier=0;
 const fmt=n=>n.toLocaleString('en-AU');
 const hex=c=>'#'+COL[c].hex.toString(16).padStart(6,'0');
 function bom(){ const map=new Map();
@@ -495,12 +739,30 @@ function updateStats(){
   document.getElementById('scaleLine').textContent=`1 stud = ${CELL} m · 1 plate = ${mpp} m · horizontal 1:${fmt(CELL/0.008)}${state.ve>1?` · vertical ×${state.ve}`:' · true scale'} · ${(FX*R/1000).toFixed(1)} × ${(FY*R/1000).toFixed(1)} km`;
   document.getElementById('resNote').textContent=`${NX}×${NY} studs · ${(NX*PITCH/10).toFixed(0)}×${(NY*PITCH/10).toFixed(0)} cm`;
   document.getElementById('veNote').textContent=`1 plate = ${mpp} m`;
-  document.getElementById('bomNote').textContent=(S.SHELL?`Large grid: only the visible shell is packed (${fmt(total)} pieces); the hidden core would need ≈ ${fmt(S.hiddenEst)} 2×4-brick equivalents, or support pillars. Shell of the ${NX}×${NY}-stud build`:`${fmt(total)} pieces for a solid ${NX}×${NY}-stud build`)+` of ${SC.name} at ${state.ve}× vertical scale${state.slr>0?`, sea level +${state.slr} m`:''}. Colour availability of each part has not been checked against current production.`;
+  document.getElementById('bomNote').textContent=(S.SHELL?`Large grid: only the visible shell is packed (${fmt(total)} pieces); the hidden core would need ≈ ${fmt(S.hiddenEst)} 2×4-brick equivalents, or support pillars. Shell of the ${NX}×${NY}-stud build`:`${fmt(total)} pieces for a solid ${NX}×${NY}-stud build`)+` of ${SC.name} at ${state.ve}× vertical scale${S.slr!==0?`, sea level ${sgnM(S.slr)}`:''}${S.IP.some(v=>v)||S.ISKIN.some(v=>v)?', last-glaciation ice':''}${S.FC?`, fires to the ${season(state.fireYear)} season`:''}. Colour availability of each part has not been checked against current production.`;
   document.getElementById('bom').innerHTML=rows.map(r=>`<tr><td>${r.k}</td><td class="id">${r.id}</td><td><span style="display:inline-flex;gap:6px;align-items:center"><span class="sw" style="background:${hex(r.c)}"></span>${COL[r.c].n}</span></td><td class="n">${fmt(r.n)}</td></tr>`).join('');
   updateSlrReadout();
 }
-const LEG=[['dbg','Dolerite & cliffs (studded)'],['lbg','Talus & scree (studded)'],['olive','Alpine heath'],['sandgreen','Cushion plants'],['tan','Buttongrass & beach'],['dkgreen','Forest'],['white','Spring snow'],['tdblue','Water (tiles)'],['lbg','Urban: residential (tiles)'],['dbg','Urban: commercial & transport (tiles)'],['white','Buildings < 9 m'],['lbg','Buildings 9–25 m'],['sandblue','Buildings ≥ 25 m'],['rbrown','Soil walls'],['black','Base plate']];
-document.getElementById('legend').innerHTML=LEG.map(([k,t])=>`<div><span class="sw" style="background:${hex(C[k])}"></span>${t}</div>`).join('');
+const LEG=[['dbg','Dolerite & cliffs (studded)'],['lbg','Talus & scree (studded)'],['olive','Alpine heath'],['sandgreen','Cushion plants'],['tan','Buttongrass & beach'],['dkgreen','Forest'],['white','Spring snow','snow'],['tdblue','Water (tiles)'],['lbg','Urban: residential (tiles)','urb'],['dbg','Urban: commercial & transport (tiles)','urb'],['white','Buildings < 9 m','bldg'],['lbg','Buildings 9–25 m','bldg'],['sandblue','Buildings ≥ 25 m','bldg']];
+const FIRELEG=[['red','Bushfire this season'],['orange','Bushfire 1–5 years before'],['blorange','Bushfire 6–20 years before'],['nougat','Bushfire 21–60 years before'],['lavender','Planned burn ≤ 20 years before']];
+const unitTxt = U => `${U.sym}: ${(U.desc||'').replace(/\.$/,'').slice(0,46)}`;
+function legend(){ if(!SC) return; let items=[];
+  const fire = state.mode==='fire' && FIRE && FIRE.id===SC.id;
+  if(fire) items.push(...FIRELEG);
+  if(geoMap()){ const n=new Map(); for(const v of GEO.su) if(v) n.set(v,(n.get(v)||0)+1);
+    const seen=new Set();
+    for(const [u] of [...n].sort((a,b)=>GEO.g.units[a[0]-1].minage-GEO.g.units[b[0]-1].minage)){ const U=GEO.g.units[u-1], key=U.col+U.sym; if(seen.has(key)) continue; seen.add(key);
+      items.push([COL[GEO.col[u]].k, unitTxt(U)]); } }
+  else { const has={snow:state.snow&&!fire, urb:URB&&URB.some(v=>v), bldg:!!BLDF&&state.bldg}; items.push(...LEG.filter(([,,k])=>!k||has[k]).map(([c,t])=>[c,t])); }
+  if(state.lgm && !fire && ICET) items.push(['white','Glacier ice, last glaciation']);
+  if(BATHY){ items.push(['dkblue','Sea water column'],['tan','Sea floor']); if(state.slr<0 && !fire) items.push(['dktan','Sea floor exposed by lower sea']); }
+  if(state.mode==='water') items.push(['tlblue','Raindrop (round plate)'],['mdblue','Its path (round tiles)']);
+  if(geoSub() && !geoMap()){ const seen=new Set(), add=u=>{ const U=GEO.g.units[u-1]; if(!U) return; const key=U.col+U.sym; if(seen.has(key)) return; seen.add(key); items.push([COL[GEO.col[u]].k, 'Rock · '+unitTxt(U)]); };
+    GEO.g.layers.forEach(ids=>add(ids[0])); const bu=new Map(); for(const v of GBU) if(v) bu.set(v,(bu.get(v)||0)+1);
+    [...bu].sort((a,b)=>b[1]-a[1]).slice(0,4).forEach(([u])=>add(u)); }
+  else if(!geoMap()) items.push(['rbrown','Soil walls']);
+  items.push(['black','Base plate']);
+  document.getElementById('legend').innerHTML=items.map(([k,t])=>`<div><span class="sw" style="background:${hex(C[k])}"></span>${t}</div>`).join(''); }
 
 // landmarks
 const labelsEl=document.getElementById('labels'); let LANDMARKS=[];
@@ -509,6 +771,7 @@ function makeLabels(){ labelsEl.innerHTML=''; LANDMARKS=SC.data.labels.map(([n,E
   for(const L of LANDMARKS){ L.el=document.createElement('div'); L.el.className='lm'+(L.w?' water':''); L.el.innerHTML=`<div class="t">${L.n}</div>${L.e?`<div class="e">${L.e}</div>`:''}<div class="stem"></div>`; labelsEl.appendChild(L.el);} }
 function cellOf(E,Nn){ return {c:Math.min(NX-1,Math.max(0,Math.floor((E-E0)/CELL))), r:Math.min(NY-1,Math.max(0,Math.floor((N1-Nn)/CELL)))}; }
 function placeLabels(){ for(const L of LANDMARKS){ let r,c; if(L.boat){const b=boatshedCell(); if(!b){L.p=null;continue;} r=b.y;c=b.x;} else ({r,c}=cellOf(L.E,L.N));
+  if((L.w||L.boat) && (S.IP[r*NX+c]||S.ISKIN[r*NX+c])){ L.p=null; continue; }   // lakes and the boatshed lie under the ice
   L.p=new THREE.Vector3((c+.5)*PITCH,(S.H[r*NX+c]+(L.boat?2:0.6))*PLATE,(r+.5)*PITCH); } }
 function updateLabels(){ if(labelsEl.style.visibility==='hidden') return; const w=innerWidth,h=innerHeight;
   for(const L of LANDMARKS){ if(!L.p){L.el.style.display='none';continue;} v.copy(L.p).project(camera); const on=v.z<1&&Math.abs(v.x)<1.05&&Math.abs(v.y)<1.05; L.el.style.display=on?'block':'none';
@@ -544,44 +807,101 @@ function pressGroup(el,btn){ el.querySelectorAll('button').forEach(b=>b.setAttri
 
 // scene picker
 const scenesEl=document.getElementById('scenes');
+let AVAIL=new Set(SCENES.map(s=>s.id).filter(id=>id!=='tasmania'));
 scenesEl.innerHTML=SCENES.map(s=>`<button data-s="${s.id}" aria-pressed="${s.id===state.scene}">${s.name}<small>${s.region}</small></button>`).join('');
 scenesEl.addEventListener('click',e=>{const b=e.target.closest('button'); if(!b||b.dataset.s===state.scene) return; pressGroup(scenesEl,b); state.scene=b.dataset.s; heavy(()=>openScene(state.scene));});
 
-// sea-level rise: slider is quadratic in metres for fine control of small rises
-const SLR_MAX=70, slrEl=document.getElementById('slr');
-const t2m = t => { const m=SLR_MAX*(t/100)**2; return m<2? Math.round(m*10)/10 : m<10? Math.round(m*2)/2 : Math.round(m); };
-const m2t = m => Math.round(100*Math.sqrt(m/SLR_MAX));
+// sea level: slider is quadratic in metres either side of today, for fine control of small changes
+const SLR_MAX=70, SLR_MIN=-120, LGM_SL=-120, slrEl=document.getElementById('slr');
+const rnd = m => m<2? Math.round(m*10)/10 : m<10? Math.round(m*2)/2 : Math.round(m);
+const t2m = t => t>=0 ? rnd(SLR_MAX*(t/100)**2) : -rnd(-SLR_MIN*(t/100)**2);
+const m2t = m => m>=0 ? Math.round(100*Math.sqrt(m/SLR_MAX)) : -Math.round(100*Math.sqrt(m/SLR_MIN));
+const sgnM = m => m>0?`+${m} m`: m<0?`−${-m} m`:'present';
 const MARKS=[[0,'today'],[1,'+1 m'],[3.3,'+3.3 m'],[7.4,'+7.4 m'],[58,'+58 m']];
-const MARK_TIPS={1:'≈ upper end of IPCC AR6 likely range for 2100 under SSP5-8.5 (0.63–1.01 m)',3.3:'≈ marine-based West Antarctic Ice Sheet (Bamber et al. 2009)',7.4:'≈ Greenland Ice Sheet (Morlighem et al. 2017, BedMachine)',58:'≈ whole Antarctic Ice Sheet (Morlighem et al. 2020, BedMachine Antarctica)'};
-document.getElementById('slrMarks').innerHTML=MARKS.map(([m,l])=>`<button data-m="${m}" title="${MARK_TIPS[m]||'present-day mean sea level'}">${l}</button>`).join('');
-function slrFlooded(slr){ // native-resolution flooded area (km²) for the readout
-  if(!(slr>0)) return 0; const F=floodMask(slr, DEMF, LAKEF, FX, FY); let n=0; for(let i=0;i<F.length;i++) if(F[i]&&!LAKEF[i]) n++; return n*R*R/1e6; }
+const MARK_TIPS={'-120':'≈ sea level around Tasmania at the Last Glacial Maximum, ~21 ka (global estimates −120 to −134 m; Lambeck et al. 2014, PNAS)',1:'≈ upper end of IPCC AR6 likely range for 2100 under SSP5-8.5 (0.63–1.01 m)',3.3:'≈ marine-based West Antarctic Ice Sheet (Bamber et al. 2009)',7.4:'≈ Greenland Ice Sheet (Morlighem et al. 2017, BedMachine)',58:'≈ whole Antarctic Ice Sheet (Morlighem et al. 2020, BedMachine Antarctica)'};
+function slrMarks(){ const marks = BATHY ? [[LGM_SL,'−120 m ice age'],...MARKS] : MARKS;
+  document.getElementById('slrMarks').innerHTML=marks.map(([m,l])=>`<button data-m="${m}" title="${MARK_TIPS[m]||'present-day mean sea level'}">${l}</button>`).join('');
+  slrEl.min = BATHY ? -100 : 0; slrEl.value = m2t(state.slr); }
+function slrArea(slr){ // native-resolution area (km²) for the readout: land flooded (slr > 0) or sea floor exposed (slr < 0)
+  if(slr>0){ const F=floodMask(slr, DEMF, LAKEF, FX, FY); let n=0; for(let i=0;i<F.length;i++) if(F[i]&&!LAKEF[i]) n++; return n*R*R/1e6; }
+  if(slr<0 && BATHY){ const W=seaWet(slr, DEMF, LAKEF, FX, FY); let n=0; for(let i=0;i<W.length;i++) if(LAKEF[i]===SEA&&!W[i]) n++; return n*R*R/1e6; }
+  return 0; }
 function updateSlrReadout(){
-  const box=document.getElementById('slrBox'), note=document.getElementById('slrNote'); const coastal=SC.data.sea; box.hidden=!coastal; note.hidden=!coastal; if(!coastal) return;
-  document.getElementById('slrOut').textContent = state.slr>0?`+${state.slr} m`:'present';
-  const km=slrFlooded(state.slr);
-  document.getElementById('slrArea').textContent = state.slr>0 ? `${km.toFixed(km<1?2:1)} km² of land inundated (at ${R} m)` : 'Drag to raise the sea';
+  const box=document.getElementById('slrBox'), note=document.getElementById('slrNote'); const coastal=!!SC.data.sea && state.mode!=='fire'; box.hidden=!coastal; note.hidden=!coastal;
+  document.getElementById('bathyNote').hidden=!BATHY; if(!coastal) return;
+  document.getElementById('slrOut').textContent = sgnM(state.slr);
+  const km=slrArea(state.slr), f=km.toFixed(km<1?2:km<100?1:0);
+  document.getElementById('slrArea').textContent = state.slr>0 ? `${f} km² of land inundated (at ${R} m)` : state.slr<0 ? `${fmt(+f)} km² of sea floor exposed (at ${R} m)` : BATHY ? 'Drag right to raise the sea, left to lower it' : 'Drag to raise the sea';
   const half=S? S.mPerPlate/2 : 0;
-  document.getElementById('slrWarn').textContent = state.slr>0 && state.slr<5 ? 'Below the DEM’s ~5 m vertical accuracy near the coast.' : (state.slr>0 && state.slr<half ? `Smaller than half a plate (${half.toFixed(0)} m): water rises inside the top plate.` : ''); }
+  document.getElementById('slrWarn').textContent = state.slr>0 && state.slr<5 ? 'Below the DEM’s ~5 m vertical accuracy near the coast.' : (state.slr!==0 && Math.abs(state.slr)<half ? `Smaller than half a plate (${half.toFixed(0)} m): the change is within the top plate.` : ''); }
 let slrTimer=null;
 slrEl.addEventListener('input',()=>{ state.slr=t2m(+slrEl.value); updateSlrReadout(); clearTimeout(slrTimer); slrTimer=setTimeout(()=>heavy(rebuild),250); });
-document.getElementById('slrMarks').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; state.slr=+b.dataset.m; slrEl.value=m2t(state.slr); updateSlrReadout(); heavy(rebuild);});
+document.getElementById('slrMarks').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; state.slr=+b.dataset.m; slrEl.value=m2t(state.slr); updateSlrReadout(); heavy(()=>{rebuild(); legend();});});
+
+// ---- modes: Landscape | Bushfire | Water drop
+const $=id=>document.getElementById(id);
+function modeUI(){
+  const m=state.mode, fire=m==='fire';
+  pressGroup($('modes'), document.querySelector(`#modes [data-m="${m}"]`));
+  const fb=document.querySelector('#modes [data-m="fire"]'); fb.disabled=!SC.data.fire; fb.title=SC.data.fire?'Mapped fire history':'No fire history prepared for this scene yet';
+  $('fireBox').hidden=!fire; $('fireNote').hidden=!fire; $('waterBox').hidden=m!=='water'; $('waterNote').hidden=m!=='water';
+  $('snow').hidden=fire; $('lgmT').hidden=fire || !(SC.data.ice||BATHY); $('geoT').hidden=fire || !geoSub();
+  $('lgmNote').hidden=fire || !state.lgm || !(SC.data.ice||BATHY);
+  $('lgmSea').textContent = BATHY ? 'Sea level is set to −120 m, about the level around Tasmania at the Last Glacial Maximum (~21 ka; global estimates −120 to −134 m, Lambeck et al. 2014).' : '';
+  $('geoNote').hidden=!geoSub();
+  $('dropTas').hidden = SC.id==='tasmania' || !AVAIL.has('tasmania');
+  $('modeNote').textContent = fire&&FIRE ? `${FIRE.g.fires.length} mapped fires` : '';
+  if(fire && FIRE){ const y=$('fireYear'); y.min=FIRE.y0; y.max=FIRE.y1; y.value=state.fireYear; }
+  updateSlrReadout(); }
+const season = y => `${y}–${String((y+1)%100).padStart(2,'0')}`;
+const FTYPE=['bushfire','planned burn','fire of unknown type'];
+function modeReadout(){
+  if(state.mode==='fire' && FIRE){ const y=state.fireYear, fs=FIRE.g.fires.filter(f=>f[0]===y).sort((a,b)=>b[3]-a[3]);
+    $('fireOut').textContent=season(y);
+    $('fireRead').innerHTML = fs.length ? `<b>${fs.length}</b> fire${fs.length>1?'s':''} mapped here in ${season(y)}: `+fs.slice(0,3).map(f=>`${f[2]||'unnamed'} (${FTYPE[f[1]]}, <b>${f[3].toFixed(f[3]<1?2:1)} km²</b>)`).join('; ')+(fs.length>3?`; and ${fs.length-3} more`:'')+'.'
+      : `No fires mapped here in ${season(y)}. Colours show the most recent fire before it.`; }
+  if(state.mode==='water') waterSay('Tap the land to release a raindrop. It runs downhill to the sea, or to the edge of the model.'); }
+function waterSay(h){ $('waterRead').innerHTML=h; }
+$('modes').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b||b.disabled||b.dataset.m===state.mode) return; stopPlay();
+  state.mode=b.dataset.m; heavy(async()=>{ if(state.mode==='fire'){ await loadFire(); if(state.fireYear==null||state.fireYear<FIRE.y0||state.fireYear>FIRE.y1) state.fireYear=FIRE.y1; } modeUI(); rebuild(); legend(); }); });
+let fireTimer=null;
+$('fireYear').addEventListener('input',e=>{ state.fireYear=+e.target.value; $('fireOut').textContent=season(state.fireYear); clearTimeout(fireTimer); fireTimer=setTimeout(()=>heavy(rebuild),200); });
+let playing=false;
+function stopPlay(){ playing=false; $('firePlay').textContent='▶ Play'; }
+$('firePlay').addEventListener('click',async()=>{ if(playing){ stopPlay(); return; } playing=true; $('firePlay').textContent='■ Stop';
+  if(state.fireYear>=FIRE.y1) state.fireYear=FIRE.y0-1;
+  while(playing && state.fireYear<FIRE.y1){ state.fireYear++; $('fireYear').value=state.fireYear; rebuild(); await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,280))); }
+  stopPlay(); });
+$('dropClear').addEventListener('click',()=>{ clearDrops(); modeReadout(); });
+$('dropTas').addEventListener('click',()=>{ const b=scenesEl.querySelector('[data-s="tasmania"]'); if(b) b.click(); });
+{ let down=null; const cv=renderer.domElement;
+  cv.addEventListener('pointerdown',e=>{ down={x:e.clientX,y:e.clientY,t:performance.now()}; });
+  cv.addEventListener('pointerup',e=>{ if(!down||state.mode!=='water'||!S||!S.route) return; const d=down; down=null;
+    if(Math.hypot(e.clientX-d.x,e.clientY-d.y)>6 || performance.now()-d.t>600) return;
+    if(+$('step').value<stepMax){ waterSay('Finish the build (build-step slider) to release drops.'); return; }
+    const i=pickCell(e); if(i>=0) releaseDrop(i); }); }
 
 const resOpts=()=>{ const r0=SC.data.r0||R; return r0===R?[4*R,2*R,R]:[4*r0,2*r0,r0,R]; };
 function resButtons(){ const opts=resOpts(); const el=document.getElementById('res');
-  el.innerHTML=opts.map(o=>`<button data-res="${o}" aria-pressed="${o===state.res}">${o} m</button>`).join(''); }
+  el.innerHTML=opts.map(o=>`<button data-res="${o}" aria-pressed="${o===state.res}">${o>=1000?o/1000+' km':o+' m'}</button>`).join(''); }
 document.getElementById('res').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b||+b.dataset.res===state.res) return; pressGroup(e.currentTarget,b); state.res=+b.dataset.res; state.tier=resOpts().indexOf(state.res); heavy(()=>{ const S0=Math.max(W,Dp), cp=camera.position.clone(), ct=controls.target.clone(); setRes(state.res); layout(); rebuild();
     // same ground area, uniformly rescaled model (horizontal and vertical both scale with 1/CELL): keep the camera
     const k=Math.max(W,Dp)/S0; tween=null; camera.position.copy(cp.multiplyScalar(k)); controls.target.copy(ct.multiplyScalar(k)); controls.update(); });});
 document.getElementById('views').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; pressGroup(e.currentTarget,b); state.view=b.dataset.v; setView(state.view);});
 const busy=document.getElementById('busy');
 function heavy(fn){ busy.hidden=false; setTimeout(async()=>{ await fn(); busy.hidden=true; },30); }
+function veButtons(){ const opts=SC.veOpts||[1,2,3,4,5]; if(!opts.includes(state.ve)) state.ve=opts[Math.min(2,opts.length-1)];
+  $('ve').innerHTML=opts.map(v=>`<button data-ve="${v}" aria-pressed="${v===state.ve}">${v}×${v===1?' true':''}</button>`).join(''); }
 document.getElementById('ve').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; pressGroup(e.currentTarget,b); state.ve=+b.dataset.ve; heavy(()=>{rebuild();});});
 function tog(id,key,after){ const el=document.getElementById(id); el.addEventListener('click',()=>{state[key]=!state[key]; el.setAttribute('aria-pressed',state[key]); after();}); }
-tog('snow','snow',()=>heavy(rebuild));
+tog('snow','snow',()=>heavy(()=>{rebuild(); legend();}));
+tog('lgmT','lgm',()=>heavy(async()=>{ if(state.lgm && SC.data.ice){ try{ await loadIce(); iceRes(); }catch(e){ console.warn(e); } }
+  if(BATHY){ if(state.lgm) state.slr=LGM_SL; else if(state.slr===LGM_SL) state.slr=0; slrEl.value=m2t(state.slr); }
+  rebuild(); legend(); modeUI(); }));
 tog('labelsT','labels',()=>applyStep(+document.getElementById('step').value));
 tog('trees','trees',()=>{S.canopyMesh.visible=state.trees;});
-tog('bldgT','bldg',()=>heavy(rebuild));
+tog('bldgT','bldg',()=>heavy(()=>{rebuild(); legend();}));
+tog('geoT','geo',()=>heavy(()=>{ rebuild(); legend(); }));
 document.getElementById('step').addEventListener('input',e=>applyStep(+e.target.value));
 const dlg=document.getElementById('dlg');
 document.getElementById('partsBtn').addEventListener('click',()=>dlg.showModal());
@@ -593,19 +913,31 @@ col.addEventListener('click',()=>{const c=panel.classList.toggle('collapsed'); c
 if(matchMedia('(max-width:720px)').matches){panel.classList.add('collapsed'); col.textContent='Show controls';}
 
 async function openScene(id){
-  await loadScene(id);
-  { const opts=resOpts(); state.res = opts.includes(state.res) && state.loaded ? state.res : opts[state.tier||0]; state.tier=opts.indexOf(state.res); state.loaded=true; }
-  state.slr=0; slrEl.value=0; state.view='hero'; state.ve=SC.ve||2;
-  pressGroup(document.getElementById('ve'), document.querySelector(`#ve button[data-ve="${state.ve}"]`));
+  stopPlay(); await loadScene(id);
+  // resolution: keep the current one when switching scenes if this scene offers it; on first load use the
+  // scene's res0 (desktop) or the coarsest tier (phones)
+  { const opts=resOpts(); state.res = opts.includes(state.res) && state.loaded ? state.res : (!MOBILE && opts.includes(SC.res0) ? SC.res0 : opts[Math.min(state.tier||0, opts.length-1)]);
+    state.tier=opts.indexOf(state.res); state.loaded=true; }
+  state.view='hero'; state.ve=SC.ve||3; veButtons();
   pressGroup(document.getElementById('views'), document.getElementById('heroBtn'));
   document.getElementById('heroBtn').textContent=SC.hero.label;
   document.getElementById('bldgT').hidden=!BLDF; document.getElementById('bldgNote').hidden=!BLDF;
+  // optional layers: geology (always shown in walls when prepared), ice (with the Ice age toggle), fire (Bushfire mode)
+  const opt = async (flag, fn) => { if(!flag) return; try{ await fn(); }catch(e){ console.warn(e); } };
+  await opt(SC.data.geo, loadGeo);
+  await opt(SC.data.ice && state.lgm, loadIce);
+  if(state.mode==='fire' && !SC.data.fire) state.mode='land';
+  await opt(state.mode==='fire', loadFire);
+  if(state.mode==='fire' && FIRE && (state.fireYear==null || state.fireYear<FIRE.y0 || state.fireYear>FIRE.y1)) state.fireYear=FIRE.y1;
+  state.slr = state.lgm && BATHY ? LGM_SL : 0; slrMarks();
+  $('geoT').setAttribute('aria-pressed',!!state.geo); $('lgmT').setAttribute('aria-pressed',!!state.lgm);
   document.getElementById('title').textContent=SC.name;
   document.getElementById('region').textContent=SC.region;
   document.getElementById('blurb').textContent=SC.blurb;
   document.getElementById('sceneNote').textContent=`${(FX*R/1000).toFixed(1)} × ${(FY*R/1000).toFixed(1)} km`;
   document.title=`${SC.name} in Bricks`;
-  resButtons(); makeLabels(); setRes(state.res); layout(); rebuild(); setView('hero',true);
+  resButtons(); makeLabels(); setRes(state.res); layout(); modeUI(); rebuild(); setView('hero',true);
+  legend();
   try{ history.replaceState(null,'','#'+id); }catch(e){}
 }
 
@@ -623,10 +955,16 @@ const needle=document.getElementById('needle');
 function loop(now){
   if(tween){ const u=Math.min(1,(now-tween.t0)/tween.dur), e=u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2;
     camera.position.lerpVectors(tween.from.p,tween.to.p,e); controls.target.lerpVectors(tween.from.t,tween.to.t,e); if(u>=1) tween=null; }
+  if(DROP) dropTick(now);
   controls.update(); renderer.render(scene,camera); if(S) updateLabels();
   const az=Math.atan2(camera.position.x-controls.target.x, camera.position.z-controls.target.z);
   needle.style.transform=`rotate(${az*180/Math.PI}deg)`;
   requestAnimationFrame(loop); }
+if(new URLSearchParams(location.search).has('debug')) window.__tb={time:()=>{ const t=performance.now(); rebuild(); return Math.round(performance.now()-t); }, state, pick:(x,y)=>pickCell({clientX:x,clientY:y}), release:releaseDrop, get S(){return S;}, get NX(){return NX;}};
+async function availability(){
+  if(Object.keys(DATA).length){ AVAIL=new Set(Object.keys(DATA)); }
+  else { try{ const idx=await fetchJSON('data/index.json'); AVAIL=new Set(Object.keys(idx)); }catch(e){ AVAIL=new Set(SCENES.map(s=>s.id)); } }
+  scenesEl.querySelectorAll('button').forEach(b=>b.hidden=!AVAIL.has(b.dataset.s)); }
 const start = (location.hash||'').slice(1); if(SCENES.some(s=>s.id===start) && start!=='cradle'){ state.scene=start; state.tier=0; pressGroup(scenesEl, scenesEl.querySelector(`[data-s="${start}"]`)); }
-openScene(state.scene).then(()=>{ busy.hidden=true; requestAnimationFrame(loop); }).catch(e=>{ busy.hidden=false; busy.textContent='Could not load scene data ('+e.message+')'; console.error(e); });
+availability().then(()=>openScene(state.scene)).then(()=>{ busy.hidden=true; requestAnimationFrame(loop); }).catch(e=>{ busy.hidden=false; busy.textContent='Could not load scene data ('+e.message+')'; console.error(e); });
 </script>

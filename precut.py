@@ -9,7 +9,9 @@ Engine only (no UI). Reproduces the browser pipeline used to build scenes.json:
      a named lake smaller than one cell keeps its best cell if >= 4/16
   3. Urban from LIST Landuse Live (CadastreAndAdministrative/77, ALUM):
      541 -> 1 (residential); 530-599 except 542-545, 553 -> 2 (commercial/industrial/transport)
-  4. Pack: Int16 row-delta metres + Uint8 lake id + Uint8 urban, raw deflate, base64
+  4. Optional sea floor (--bathy, a GeoTIFF in EPSG:28355 from bathy.py): sea cells take the bilinear
+     sea-floor height, clipped to [-150, -1] m; the page then shows a water column and can lower the sea
+  5. Pack: Int16 row-delta metres + Uint8 lake id + Uint8 urban, raw deflate, base64
 Curated metadata (labels, spot heights, lake names/levels, r0) is taken from scenes_meta.json.
 
 Usage:
@@ -97,6 +99,43 @@ def read_window(ds, E0, N1, W, H):
     return M
 
 
+BED_MIN, BED_MAX = -150.0, -1.0   # sea floor shown down to -150 m (below the ice-age -120 m); never above -1 m
+
+
+def sample_raster(src, E0, N1, W, H, cell, resampling="bilinear"):
+    """Values of a raster at the cell centres of a W x H grid of `cell` m cells (EPSG:28355); NaN where no data."""
+    from rasterio.warp import reproject, Resampling
+    from affine import Affine
+    dst = np.full((H, W), np.nan, np.float32)
+    reproject(source=rasterio.band(src, 1), destination=dst, src_nodata=src.nodata,
+              dst_transform=Affine(cell, 0, E0, 0, -cell, N1), dst_crs="EPSG:28355",
+              dst_nodata=np.nan, resampling=getattr(Resampling, resampling))
+    return dst
+
+
+def fill_nan(a):
+    """Fill NaN by inverse-distance interpolation from the valid edge (GDAL FillNodata)."""
+    from rasterio.fill import fillnodata
+    ok = np.isfinite(a)
+    if ok.all() or not ok.any(): return a
+    return fillnodata(np.where(ok, a, 0).astype(np.float32), mask=ok.astype(np.uint8), max_search_distance=400)
+
+
+def sea_floor(bds, Z, L, E0, N1, cell=CELL):
+    """Put clipped sea-floor heights into the sea cells of Z (in place). Returns summary stats."""
+    H, W = Z.shape
+    sea = (L == SEA)
+    if not sea.any(): return None
+    b = sample_raster(bds, E0, N1, W, H, cell)
+    nod = float(np.isnan(b[sea]).mean())
+    b = fill_nan(b)
+    Z[sea] = jsround(np.clip(b[sea], BED_MIN, BED_MAX)).astype(Z.dtype)
+    v = b[sea]
+    return dict(cells=int(sea.sum()), nodata=round(nod, 4), bmin=round(float(np.nanmin(v)), 1),
+                bmed=round(float(np.nanmedian(v)), 1), bmax=round(float(np.nanmax(v)), 1),
+                clipped=round(float((v < BED_MIN).mean()), 4))
+
+
 def jsround(a):  # Math.round semantics (half up), not numpy banker's rounding
     return np.floor(a + 0.5)
 
@@ -129,7 +168,7 @@ def unpack_z(z, W, H):
 
 
 # ---------------------------------------------------------------- one scene
-def build_scene(sid, m, ds, session, log):
+def build_scene(sid, m, ds, session, log, bds=None):
     E0, N1, W, H = m["E0"], m["N1"], m["nx"], m["ny"]
     lake_names = [n.upper() for n in m.get("lakes", [])]
     E1, N0 = E0 + W * CELL, N1 - H * CELL
@@ -171,7 +210,10 @@ def build_scene(sid, m, ds, session, log):
     log(f"{sid}: urban {len(uf)} polygons, {int(sel.sum())} cells")
 
     L = L.reshape(H, W); U = U.reshape(H, W)
-    out = {k: v for k, v in m.items() if k not in ("z", "u")}
+    out = {k: v for k, v in m.items() if k not in ("z", "u", "bathy")}
+    if bds is not None and (L == SEA).any():
+        st = sea_floor(bds, Z, L, E0, N1); out["bathy"] = 1
+        log(f"{sid}: sea floor {st}")
     out.update(r=25, nx=W, ny=H, sea=int(sea.sum()), z=pack(Z, L, U))
     out["_check"] = dict(hm=rolling(Z), hl=rolling(L), hu=rolling(U), zmax=int(Z.max()),
                          built=time.strftime("%Y-%m-%dT%H:%M:%S%z"))
@@ -185,6 +227,7 @@ def main():
     ap.add_argument("--out", required=True, help="output directory, e.g. /srv/www/data")
     ap.add_argument("--only", default="", help="comma-separated scene ids")
     ap.add_argument("--verify", default="", help="previous scenes.json to compare against")
+    ap.add_argument("--bathy", default="", help="sea-floor GeoTIFF in EPSG:28355 (from bathy.py); optional")
     a = ap.parse_args()
     meta = json.load(open(a.meta))
     ids = [s for s in (a.only.split(",") if a.only else meta.keys()) if s]
@@ -193,15 +236,22 @@ def main():
     log = lambda s: print(s, flush=True)
     s = requests.Session(); s.headers["User-Agent"] = "tas-bricks-precut/1.0"
     index = {}
+    import os
+    bds = rasterio.open(a.bathy) if a.bathy and os.path.exists(a.bathy) else None
     with rasterio.open(a.dem) as ds:
         if ds.crs and ds.crs.to_epsg() not in (28355, None): sys.exit(f"DEM CRS {ds.crs} is not EPSG:28355")
         for sid in ids:
-            out, Z, L, U = build_scene(sid, meta[sid], ds, s, log)
+            if meta[sid].get("r", 25) != 25: log(f"{sid}: not a 25 m scene (use statewide.py)"); continue
+            out, Z, L, U = build_scene(sid, meta[sid], ds, s, log, bds)
             if sid in prev and prev[sid].get("r") == 25 and prev[sid]["nx"] == out["nx"]:
                 pZ, pL, pU = unpack_z(prev[sid]["z"], out["nx"], out["ny"])
                 log(f"{sid}: verify  |dZ|max {int(np.abs(pZ - Z).max())} m, dZ!=0 {int((pZ != Z).sum())} cells, "
                     f"lake diff {int((pL != L).sum())}, urban diff {int((pU != U).sum())}")
             fn = os.path.join(a.out, f"{sid}.json")
+            if os.path.exists(fn):          # keep flags of layers built later by geology/glacial/fire.py
+                old_d = json.load(open(fn))
+                for k in ("geo", "ice", "fire"):
+                    if old_d.get(k) and os.path.exists(os.path.join(a.out, f"{sid}_{k}.json")): out[k] = 1
             with open(fn + ".tmp", "w") as f: json.dump(out, f, separators=(",", ":"))
             os.replace(fn + ".tmp", fn)
             index[sid] = dict(bytes=os.path.getsize(fn), **out["_check"])

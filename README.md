@@ -8,6 +8,8 @@ Static site served by Caddy; scene data pre-cut on the VM from the LIST 25 m DEM
     fetch_dem.sh         download council DEM zips -> statewide VRT + COG
     precut.py            DEM + LIST lakes + LIST land use -> www/data/<scene>.json
     make_site.py         template -> www/index.html (vendored three.js, no CDN)
+    run_all.sh           optional layers (geology, sea floor, statewide scene, ice age, fire) + site
+    geology.py bathy.py statewide.py glacial.py fire.py   one script per layer (see below)
 
 ## 1. Deploy now (uses the bundled data)
     rsync -a www/ /srv/www/
@@ -30,6 +32,40 @@ build took the first).
 Add an entry to scenes_meta.json (E0, N1 on the 25 m grid; nx, ny in 25 m cells; r0 = coarsest
 native tier; lakes = ordered names; labels; spots; lev) and a matching entry in SCENES in
 tas-template.html (name, blurb, hero camera). Then run precut.py --only <id> and make_site.py.
+
+## Optional layers: geology, sea floor, statewide scene, ice age, fire
+One command fetches and builds everything, then rebuilds index.html (logs in /srv/data/logs):
+
+    ./run_all.sh                    # geology bathy statewide ice fire site
+    ./run_all.sh fire site          # any subset, in that order
+
+It ends with a summary table to check. Each layer is optional: the page shows a control only when the
+scene's data/<id>.json carries the flag (`geo`, `bathy`, `ice`, `fire`), and falls back otherwise.
+
+| step | script | source | output |
+|---|---|---|---|
+| geology | geology.py | MRT geology via theLIST (GeologicalAndSoils 14 = 1:25k, 16 = 1:250k) | data/<id>_geo.json, `geo:1` |
+| bathy | bathy.py | AusBathyTopo (Australia) 250 m 2026, Geoscience Australia (2.4 GB zip, kept in /srv/data/bathy) | sea-floor heights in the sea cells of data/<id>.json, `bathy:1` |
+| statewide | statewide.py | DEM (Tasmania) + AusBathyTopo (sea floor, Victorian coast) + LIST major lakes | data/tasmania.json (1 km; tiers 8/4/2/1 km) |
+| ice | glacial.py | GLACIMONTIS palaeoglaciers (Zenodo 15600659), Tasmanian records | data/<id>_ice.json, `ice:1` |
+| fire | fire.py | theLIST Fire History - All (EmergencyManagementPublic/1) | data/<id>_fire.json, `fire:1` |
+
+* **Geology** is on by default wherever prepared: walls and build-step slices show rock, the surface keeps
+  vegetation; the *Geology map* toggle puts the mapped unit on the top plate. Model: bases of the near-flat
+  layered units (Tertiary, Jurassic dolerite, Triassic, Permian) fitted to the DEM height of mapped contacts
+  (plane <= 3 deg + Gaussian residual, 600 m) at 100 m, forced to agree with the map in every model cell;
+  older basement extruded from the nearest outcrop; Quaternary cover a 10 m veneer; no faults.
+* **Sea floor**: bilinear to 25 m, clipped to [-150, -1] m. `precut.py --bathy /srv/data/bathy/tas_bathy_mga.tif`
+  keeps it on a re-cut (otherwise re-run `./run_all.sh bathy`); a re-cut keeps the `geo`/`ice`/`fire` flags when
+  their files exist. The scripts only read scenes_meta.json (the scene list), so the repo stays clean. The sea-level slider then runs -120...+70 m;
+  lowering it exposes sea floor connected to open water at the model edge.
+* **Ice age** toggle (Landscape): ice plates from the mapped glacier outlines, thickness from perfectly plastic
+  ice (tau = 100 kPa, `--tau`) built inwards from the margin on the present ground; sea at -120 m where the
+  scene has sea floor.
+* **Bushfire** mode: top plate coloured by the most recent fire up to the chosen season (slider, Play).
+* **Water drop** mode: tap to release a drop; D8 steepest descent on a Priority-Flood + epsilon filled surface
+  of the model's block heights; outlets are the sea and the model edge; the outlet's catchment is hazed.
+  Best on the statewide scene. `?debug` in the URL exposes `window.__tb` for testing.
 
 ## Caddy
 In the site block, let the browser revalidate data (ETag) so regenerated scenes appear at once:
