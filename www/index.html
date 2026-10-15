@@ -918,9 +918,11 @@ tog('lgmT','lgm',()=>heavy(async()=>{ if(state.lgm && SC.data.ice){ try{ await l
   if(BATHY){ if(state.lgm) state.slr=LGM_SL; else if(state.slr===LGM_SL) state.slr=0; slrEl.value=m2t(state.slr); }
   rebuild(); legend(); modeUI(); }));
 tog('labelsT','labels',()=>applyStep(+document.getElementById('step').value));
-tog('trees','trees',()=>{S.canopyMesh.visible=state.trees;});
+// Canopy and Geology map are exclusive: the map replaces the vegetation plate; switching either on switches the other off
+const setTog=(id,key,v)=>{ state[key]=v; $(id).setAttribute('aria-pressed',v); };
+tog('trees','trees',()=>{ if(state.trees && state.geo){ setTog('geoT','geo',false); heavy(()=>{ rebuild(); legend(); }); } else S.canopyMesh.visible=state.trees; });
 tog('bldgT','bldg',()=>heavy(()=>{rebuild(); legend();}));
-tog('geoT','geo',()=>heavy(()=>{ rebuild(); legend(); }));
+tog('geoT','geo',()=>{ setTog('trees','trees',!state.geo); heavy(()=>{ rebuild(); legend(); }); });
 document.getElementById('step').addEventListener('input',e=>applyStep(+e.target.value));
 const dlg=document.getElementById('dlg');
 document.getElementById('partsBtn').addEventListener('click',()=>dlg.showModal());
