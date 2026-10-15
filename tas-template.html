@@ -220,7 +220,7 @@ const SCENES = [
   blurb:'The most remote, hardest-won summit in Australia’s south-west wilderness.'},
  {id:'nut', res0:50, ve:5, name:'The Nut, Stanley', region:'Circular Head', hero:{label:'From Bass Strait', az:190, el:22, d:1.1, target:'The Nut', lead:0.03, mix:0.2},
   blurb:'A 143 m basalt volcanic plug tethered to the coast by a narrow isthmus.'},
- {id:'tasmania', ve:20, veOpts:[5,10,20,40], name:'All of Tasmania', region:'lutruwita / Tasmania & Bass Strait', hero:{label:'From the south-west', az:205, el:40, d:1.6, target:[455000,5345000]},
+ {id:'tasmania', ve:40, veOpts:[5,10,20,40], name:'All of Tasmania', region:'lutruwita / Tasmania & Bass Strait', hero:{label:'From the south-west', az:205, el:40, d:1.2, target:[455000,5345000]},
   blurb:'The whole island at 1 km, with the sea floor of Bass Strait. Lower the sea to the ice-age −120 m, or follow a raindrop to the sea.'},
 ];
 
@@ -659,7 +659,7 @@ function prepWater(){
   const out=new Uint8Array(N); for(let i=0;i<N;i++) if(S.WET[i] && (LAKE[i]===SEA || FLOOD[i])) out[i]=1;   // sea and flooded land are outlets
   S.route=drainage(H_M, out, NX, NY); S.outlet=out;
   S.trail=new THREE.InstancedMesh(tileRoundGeo,trailMat,MAXTRAIL); S.trail.count=0; S.trail.castShadow=true; model.add(S.trail);
-  S.dropR=Math.max(6, 0.012*Math.max(W,Dp));                       // drop radius (mm): ~1.2% of the model's long side
+  S.dropR=Math.max(6, 0.005*Math.max(W,Dp));                       // drop radius (mm): ~1.2% of the model's long side
   S.dropMesh=new THREE.Mesh(dropGeo,dropMat); S.dropMesh.scale.setScalar(S.dropR); S.dropMesh.visible=false; S.dropMesh.castShadow=true; model.add(S.dropMesh);
   DROP=null;
 }
@@ -681,7 +681,7 @@ function releaseDrop(i0){
   edges.forEach(([ex,ez,alongZ,y],k)=>{ S.basin.setMatrixAt(k, tmpM.compose(v.set(ex*PITCH, y, ez*PITCH), q0, alongZ ? new THREE.Vector3(ew,eh,PITCH) : new THREE.Vector3(PITCH,eh,ew))); });
   S.basin.instanceMatrix.needsUpdate=true; model.add(S.basin);
   // slow enough to follow: 72-560 ms per block, ~28 s for a long path
-  DROP={path, t0:performance.now(), step:Math.min(560,Math.max(72,28000/path.length)), laid:0, basinKm2:cells.length*CELL*CELL/1e6};
+  DROP={path, t0:performance.now(), step:Math.min(280,Math.max(36,20000/path.length)), laid:0, basinKm2:cells.length*CELL*CELL/1e6};
   S.dropMesh.visible=true; waterSay('The drop is on its way…');
 }
 function dropTick(now){
