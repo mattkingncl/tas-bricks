@@ -136,7 +136,7 @@ td.id{font-family:var(--mono);color:var(--ink2)}
   </div>
   <div class="modebox" id="waterBox" hidden>
     <div class="readout" id="waterRead">Tap the land to release a raindrop. It runs downhill to the sea, or to the edge of the model.</div>
-    <div class="row"><button class="btn" id="dropClear">Clear drops</button><button class="btn" id="dropTas" hidden>Open all of Tasmania</button></div>
+    <div class="row"><button class="btn" id="dropClear">Clear drops</button></div>
   </div>
   <div class="grp">
     <div class="lbl">View</div>
@@ -184,7 +184,7 @@ td.id{font-family:var(--mono);color:var(--ink2)}
   <p class="note" id="bldgNote" hidden>Buildings: Overture Maps Foundation, buildings theme release 2026-09-23.0 (footprints mostly OpenStreetMap, © OpenStreetMap contributors, ODbL). Height = building height where given (mostly Microsoft ML estimates), raised to 3.3&nbsp;m × floors where floors are tagged; else a default by type (houses 5&nbsp;m, sheds 3&nbsp;m, other 8&nbsp;m). A 25&nbsp;m cell is built when ≥4 of 16 sub-samples fall in a footprint and takes the tallest building there; coarser blocks take the mean of their built cells when ≥25% built. Buildings sit on top of the terrain; none on flooded cells. Indicative only.</p>
   <p class="note" id="lgmNote" hidden>Ice age: glacier outlines from the GLACIMONTIS compilation of reconstructed palaeoglaciers (Zenodo, doi:10.5281/zenodo.15600659, CC BY 4.0), which for Tasmania maps the maximum ice extent of the last glaciation from Colhoun &amp; Barrows (2001), Barrows et al. (2002) and Mackintosh et al. (2006). Ice thickness is not mapped: it is modelled as perfectly plastic ice (basal shear stress 100&nbsp;kPa, ρ&nbsp;=&nbsp;900&nbsp;kg&nbsp;m<sup>−3</sup>) on today’s ground surface, built inwards from the mapped margin, so it is indicative only (no isostasy, lakes not removed from the bed). <span id="lgmSea"></span></p>
   <p class="note" id="fireNote" hidden>Fire history: theLIST <i>Fire History – All</i> (Tasmanian Government fire agencies, via theLIST, CC BY 3.0 AU): mapped perimeters of bushfires and planned burns by fire season. A 25&nbsp;m cell counts as burnt when ≥50% of it lies inside a mapped perimeter; perimeters include unburnt patches, and records before the 1990s are incomplete. The top plate shows the most recent fire up to the chosen season; coarser blocks follow the majority of their 25&nbsp;m cells.</p>
-  <p class="note" id="waterNote" hidden>Water drop: the drop follows the steepest descent over the block heights shown (D8 routing on a depression-filled surface: Priority-Flood with ε, Barnes et al. 2014), so paths and catchments are only as good as the chosen stud size. Wet sea cells and the model edge are outlets; lakes are crossed at their outlet. The blue haze marks every block that drains to the same outlet.</p>
+  <p class="note" id="waterNote" hidden>Water drop: the drop follows the steepest descent over the block heights shown (D8 routing on a depression-filled surface: Priority-Flood with ε, Barnes et al. 2014), so paths and catchments are only as good as the chosen stud size. Wet sea cells and the model edge are outlets; lakes are crossed at their outlet. The red outline encloses every block that drains to the same outlet. Shown on the 1&nbsp;km All of Tasmania scene only.</p>
   <p class="note" id="slrNote">Sea-level rise is a static, uniform (“bathtub”) rise with hydraulic connectivity to the sea, computed on the metre heights before brick quantisation. It ignores ocean-dynamic and gravitational fingerprints, vertical land motion/GIA, tides and surge. The DEM interpolates between the 1&nbsp;m coastline and the first 10&nbsp;m contour, so rises of a few metres are not reliably resolved; use LiDAR for planning.<span id="bathyNote" hidden> Sea floor: AusBathyTopo (Australia) 250&nbsp;m 2026 (Geoscience Australia, CC BY 4.0), heights relative to mean sea level, bilinear to 25&nbsp;m, shown to a floor of −150&nbsp;m. Lowering the sea exposes sea floor connected to open water at the model edge; enclosed basins are shown dry. Today’s sea floor is used for past sea levels (no correction for sediment, isostasy or tectonics).</span></p>
 </aside>
 
@@ -642,16 +642,24 @@ function boatshedCell(){ const k=lakeId('Dove Lake'); if(k<0) return null;
 
 // ---- water drop: routing on the current model, a Trans-Light Blue round plate that runs downhill leaving round tiles
 const tileRoundGeo=(()=>{const pts=[[0,0],[3.9,0],[3.9,3.0],[3.7,3.2],[0,3.2]].map(p=>new THREE.Vector2(p[0],p[1])); return new THREE.LatheGeometry(pts,20);})();
-const dropMat=new THREE.MeshStandardMaterial({color:COL[C.tlblue].hex,roughness:0.08,metalness:0,transparent:true,opacity:0.82,envMapIntensity:1.0});
-const trailMat=new THREE.MeshStandardMaterial({color:COL[C.mdblue].hex,roughness:0.3,metalness:0,envMapIntensity:0.6});
-const basinMat=new THREE.MeshBasicMaterial({color:0x9fe3ff,transparent:true,opacity:0.38,depthWrite:false});
+// drop and trail in a saturated azure that stands out from tan, green, white and the dark-blue sea; catchment edge in red
+const AZURE=0x078BC9;
+const dropMat=new THREE.MeshStandardMaterial({color:AZURE,emissive:0x05507a,emissiveIntensity:0.6,roughness:0.15,metalness:0});
+const trailMat=new THREE.MeshStandardMaterial({color:AZURE,emissive:0x05507a,emissiveIntensity:0.35,roughness:0.3,metalness:0});
+const edgeMat=new THREE.MeshStandardMaterial({color:COL[C.red].hex,emissive:0x5a0a04,emissiveIntensity:0.4,roughness:0.4,metalness:0});
+// unit teardrop (radius 1, height ~2.6), scaled to the model size when shown
+const dropGeo=(()=>{ const pts=[];
+  for(let k=0;k<=18;k++){ const t=-Math.PI/2 + k/18*(Math.PI/2+Math.PI/6); pts.push(new THREE.Vector2(Math.cos(t), 1+Math.sin(t))); }  // sphere from the base to 30°
+  pts.push(new THREE.Vector2(0.18,2.45), new THREE.Vector2(0,2.6));                                                                   // taper to the tip
+  return new THREE.LatheGeometry(pts,32); })();
 const MAXTRAIL=8000;
 let DROP=null;   // running animation {path, t0, step}
 function prepWater(){
   const out=new Uint8Array(N); for(let i=0;i<N;i++) if(S.WET[i] && (LAKE[i]===SEA || FLOOD[i])) out[i]=1;   // sea and flooded land are outlets
   S.route=drainage(H_M, out, NX, NY); S.outlet=out;
   S.trail=new THREE.InstancedMesh(tileRoundGeo,trailMat,MAXTRAIL); S.trail.count=0; S.trail.castShadow=true; model.add(S.trail);
-  S.dropMesh=new THREE.Mesh(roundPlateGeo,dropMat); S.dropMesh.visible=false; S.dropMesh.castShadow=true; model.add(S.dropMesh);
+  S.dropR=Math.max(6, 0.012*Math.max(W,Dp));                       // drop radius (mm): ~1.2% of the model's long side
+  S.dropMesh=new THREE.Mesh(dropGeo,dropMat); S.dropMesh.scale.setScalar(S.dropR); S.dropMesh.visible=false; S.dropMesh.castShadow=true; model.add(S.dropMesh);
   DROP=null;
 }
 const topY = i => S.H[i]*PLATE;
@@ -661,19 +669,25 @@ function releaseDrop(i0){
   const {rec,root}=S.route, path=[i0]; for(let i=i0; rec[i]>=0; i=rec[i]) path.push(rec[i]);
   // catchment of the outlet reached: every block draining to the same outlet
   const r0=root[i0], cells=[]; for(let i=0;i<N;i++) if(root[i]===r0 && !S.WET[i]) cells.push(i);
+  // outline the catchment: a thin red wall on every block edge between the catchment and the rest
   if(S.basin){ model.remove(S.basin); S.basin.dispose(); }
-  S.basin=new THREE.InstancedMesh(unitBox,basinMat,Math.max(1,cells.length)); S.basin.renderOrder=3; S.basin.count=cells.length;
-  const sc=new THREE.Vector3(PITCH,0.3,PITCH);
-  cells.forEach((i,k)=>{ S.basin.setMatrixAt(k, tmpM.compose(v.set((i%NX+.5)*PITCH, topY(i)+STUD_H+0.15, (((i/NX)|0)+.5)*PITCH), q0, sc)); });
+  const inB=new Uint8Array(N); for(const i of cells) inB[i]=1; const edges=[];
+  for(const i of cells){ const x=i%NX, y=(i/NX)|0;
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const xx=x+dx, yy=y+dy, j=yy*NX+xx;
+      if(xx<0||yy<0||xx>=NX||yy>=NY||!inB[j]) edges.push([x+.5+dx/2, y+.5+dy/2, dx!==0, topY(i)]); } }
+  S.basin=new THREE.InstancedMesh(unitBox,edgeMat,Math.max(1,edges.length)); S.basin.count=edges.length;
+  const ew=Math.max(1.2, 0.18*PITCH), eh=STUD_H+2.0;
+  edges.forEach(([ex,ez,alongZ,y],k)=>{ S.basin.setMatrixAt(k, tmpM.compose(v.set(ex*PITCH, y, ez*PITCH), q0, alongZ ? new THREE.Vector3(ew,eh,PITCH) : new THREE.Vector3(PITCH,eh,ew))); });
   S.basin.instanceMatrix.needsUpdate=true; model.add(S.basin);
-  DROP={path, t0:performance.now(), step:Math.min(140,Math.max(18,7000/path.length)), laid:0, basinKm2:cells.length*CELL*CELL/1e6};
+  // slow enough to follow: 72-560 ms per block, ~28 s for a long path
+  DROP={path, t0:performance.now(), step:Math.min(560,Math.max(72,28000/path.length)), laid:0, basinKm2:cells.length*CELL*CELL/1e6};
   S.dropMesh.visible=true; waterSay('The drop is on its way…');
 }
 function dropTick(now){
   if(!DROP || !S.dropMesh) return; const {path,step}=DROP, u=(now-DROP.t0)/step, k=Math.min(path.length-1,Math.floor(u)), f=Math.min(1,u-k);
   const a=path[k], b=path[Math.min(path.length-1,k+1)];
   const xa=(a%NX+.5)*PITCH, za=(((a/NX)|0)+.5)*PITCH, xb=(b%NX+.5)*PITCH, zb=(((b/NX)|0)+.5)*PITCH;
-  S.dropMesh.position.set(xa+(xb-xa)*f, Math.max(topY(a),topY(b))+(S.WET[a]?0:PLATE)+1.2*Math.abs(Math.sin(u*Math.PI)), za+(zb-za)*f);
+  S.dropMesh.position.set(xa+(xb-xa)*f, Math.max(topY(a),topY(b))+(S.WET[a]?0:PLATE)+0.25*S.dropR*Math.abs(Math.sin(u*Math.PI)), za+(zb-za)*f);
   while(DROP.laid<=k && DROP.laid<path.length){ const i=path[DROP.laid++]; if(S.WET[i] || S.trail.count>=MAXTRAIL) continue;
     S.trail.setMatrixAt(S.trail.count, tmpM.makeTranslation((i%NX+.5)*PITCH, topY(i), (((i/NX)|0)+.5)*PITCH)); S.trail.count++; S.trail.instanceMatrix.needsUpdate=true; }
   if(u>=path.length-1){ const d=DROP; DROP=null; S.dropMesh.position.y=topY(path[path.length-1])+(S.WET[path[path.length-1]]?0:PLATE); waterReport(d); }
@@ -688,7 +702,7 @@ function waterReport(d){
   else end = `leaves the model at the ${y===0?'northern':y===NY-1?'southern':x===0?'western':'eastern'} edge (it keeps going beyond the scene)`;
   const z0=H_M[i0], z1=S.WET[iN]? (S.outlet[iN]?S.slr:H_M[iN]) : H_M[iN];
   waterSay(`From <b>${fmt(Math.round(z0))} m</b> the drop ${end}${lakes.length?`, via ${lakes.join(', ')}`:''}: <b>${len.toFixed(len<10?1:0)} km</b> downhill, falling <b>${fmt(Math.round(z0-z1))} m</b>. `+
-    `The haze shows its catchment within the model: <b>${fmt(Math.round(d.basinKm2*10)/10)} km²</b>${S.outlet[iN]?'':' so far'}.`);
+    `The red outline shows its catchment within the model: <b>${fmt(Math.round(d.basinKm2*10)/10)} km²</b>${S.outlet[iN]?'':' so far'}.`);
 }
 function clearDrops(){ DROP=null; if(S.trail){ S.trail.count=0; } if(S.dropMesh) S.dropMesh.visible=false; if(S.basin){ model.remove(S.basin); S.basin.dispose(); S.basin=null; } }
 // pick the model cell under the pointer by marching the view ray through the block heights
@@ -756,7 +770,7 @@ function legend(){ if(!SC) return; let items=[];
   else { const has={snow:state.snow&&!fire, urb:URB&&URB.some(v=>v), bldg:!!BLDF&&state.bldg}; items.push(...LEG.filter(([,,k])=>!k||has[k]).map(([c,t])=>[c,t])); }
   if(state.lgm && !fire && ICET) items.push(['white','Glacier ice, last glaciation']);
   if(BATHY){ items.push(['dkblue','Sea water column'],['tan','Sea floor']); if(state.slr<0 && !fire) items.push(['dktan','Sea floor exposed by lower sea']); }
-  if(state.mode==='water') items.push(['tlblue','Raindrop (round plate)'],['mdblue','Its path (round tiles)']);
+  if(state.mode==='water') items.push(['mdblue','Raindrop and its path (round tiles)'],['red','Catchment outline']);
   if(geoSub() && !geoMap()){ const seen=new Set(), add=u=>{ const U=GEO.g.units[u-1]; if(!U) return; const key=U.col+U.sym; if(seen.has(key)) return; seen.add(key); items.push([COL[GEO.col[u]].k, 'Rock · '+unitTxt(U)]); };
     GEO.g.layers.forEach(ids=>add(ids[0])); const bu=new Map(); for(const v of GBU) if(v) bu.set(v,(bu.get(v)||0)+1);
     [...bu].sort((a,b)=>b[1]-a[1]).slice(0,4).forEach(([u])=>add(u)); }
@@ -849,7 +863,7 @@ function modeUI(){
   $('lgmNote').hidden=fire || !state.lgm || !(SC.data.ice||BATHY);
   $('lgmSea').textContent = BATHY ? 'Sea level is set to −120 m, about the level around Tasmania at the Last Glacial Maximum (~21 ka; global estimates −120 to −134 m, Lambeck et al. 2014).' : '';
   $('geoNote').hidden=!geoSub();
-  $('dropTas').hidden = SC.id==='tasmania' || !AVAIL.has('tasmania');
+  const wb=document.querySelector('#modes [data-m="water"]'); wb.disabled=!AVAIL.has('tasmania'); wb.title='Runs on the All of Tasmania scene';
   $('modeNote').textContent = fire&&FIRE ? `${FIRE.g.fires.length} mapped fires` : '';
   if(fire && FIRE){ const y=$('fireYear'); y.min=FIRE.y0; y.max=FIRE.y1; y.value=state.fireYear; }
   updateSlrReadout(); }
@@ -863,7 +877,9 @@ function modeReadout(){
   if(state.mode==='water') waterSay('Tap the land to release a raindrop. It runs downhill to the sea, or to the edge of the model.'); }
 function waterSay(h){ $('waterRead').innerHTML=h; }
 $('modes').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b||b.disabled||b.dataset.m===state.mode) return; stopPlay();
-  state.mode=b.dataset.m; heavy(async()=>{ if(state.mode==='fire'){ await loadFire(); if(state.fireYear==null||state.fireYear<FIRE.y0||state.fireYear>FIRE.y1) state.fireYear=FIRE.y1; } modeUI(); rebuild(); legend(); }); });
+  state.mode=b.dataset.m;
+  if(state.mode==='water' && SC.id!=='tasmania'){ const t=scenesEl.querySelector('[data-s="tasmania"]'); if(t){ t.click(); return; } }   // water drop runs statewide
+  heavy(async()=>{ if(state.mode==='fire'){ await loadFire(); if(state.fireYear==null||state.fireYear<FIRE.y0||state.fireYear>FIRE.y1) state.fireYear=FIRE.y1; } modeUI(); rebuild(); legend(); }); });
 let fireTimer=null;
 $('fireYear').addEventListener('input',e=>{ state.fireYear=+e.target.value; $('fireOut').textContent=season(state.fireYear); clearTimeout(fireTimer); fireTimer=setTimeout(()=>heavy(rebuild),200); });
 let playing=false;
@@ -873,7 +889,6 @@ $('firePlay').addEventListener('click',async()=>{ if(playing){ stopPlay(); retur
   while(playing && state.fireYear<FIRE.y1){ state.fireYear++; $('fireYear').value=state.fireYear; rebuild(); await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,280))); }
   stopPlay(); });
 $('dropClear').addEventListener('click',()=>{ clearDrops(); modeReadout(); });
-$('dropTas').addEventListener('click',()=>{ const b=scenesEl.querySelector('[data-s="tasmania"]'); if(b) b.click(); });
 { let down=null; const cv=renderer.domElement;
   cv.addEventListener('pointerdown',e=>{ down={x:e.clientX,y:e.clientY,t:performance.now()}; });
   cv.addEventListener('pointerup',e=>{ if(!down||state.mode!=='water'||!S||!S.route) return; const d=down; down=null;
@@ -927,6 +942,7 @@ async function openScene(id){
   await opt(SC.data.geo, loadGeo);
   await opt(SC.data.ice && state.lgm, loadIce);
   if(state.mode==='fire' && !SC.data.fire) state.mode='land';
+  if(state.mode==='water' && id!=='tasmania') state.mode='land';
   await opt(state.mode==='fire', loadFire);
   if(state.mode==='fire' && FIRE && (state.fireYear==null || state.fireYear<FIRE.y0 || state.fireYear>FIRE.y1)) state.fireYear=FIRE.y1;
   state.slr = state.lgm && BATHY ? LGM_SL : 0; slrMarks();

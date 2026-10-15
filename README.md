@@ -64,8 +64,8 @@ scene's data/<id>.json carries the flag (`geo`, `bathy`, `ice`, `fire`), and fal
   scene has sea floor.
 * **Bushfire** mode: top plate coloured by the most recent fire up to the chosen season (slider, Play).
 * **Water drop** mode: tap to release a drop; D8 steepest descent on a Priority-Flood + epsilon filled surface
-  of the model's block heights; outlets are the sea and the model edge; the outlet's catchment is hazed.
-  Best on the statewide scene. `?debug` in the URL exposes `window.__tb` for testing.
+  of the model's block heights; outlets are the sea and the model edge; the outlet's catchment is outlined in red.
+  Statewide scene only (the mode button opens it). `?debug` in the URL exposes `window.__tb` for testing.
 
 ## Caddy
 In the site block, let the browser revalidate data (ETag) so regenerated scenes appear at once:
