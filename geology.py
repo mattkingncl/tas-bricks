@@ -38,21 +38,23 @@ CELL = 25.0
 # ---------------------------------------------------------------- classification
 # colour keys must exist in the page palette (COL in tas-template.html)
 def classify(sym, desc, minage, maxage):
+    """Unit class (cover / layer / basement / unknown) and brick colour key.
+    Colours follow age groups so strata read clearly in the model walls; plain greys are kept for
+    dolerite only, so they cannot be confused with the generic rock used where no geology is mapped."""
     s = (sym or '').strip(); d = (desc or '').lower(); a = 0.5 * ((minage or 0) + (maxage or 0))
     if s in ('', 'Unknown') or (not minage and not maxage):       return 'unknown', 'lbg'
-    if a < 2.6 or s.startswith('Q'):                               return 'cover', 'tan'
-    if 'dolerite' in d or s.startswith('Jd'):                      return 'layer', 'dbg'
-    if a < 66:   return 'layer', ('dkbrown' if 'basalt' in d else 'dktan')          # Cenozoic
-    if a < 252:  return 'layer', 'nougat'                                            # Triassic
-    if a < 310:                                                                     # Permian (Parmeener)
-        if 'sandstone' in d:                         return 'layer', 'sandblue'
+    if a < 2.6 or s.startswith('Q'):                               return 'cover', 'tan'        # Quaternary cover
+    if 'dolerite' in d or s.startswith('Jd'):                      return 'layer', 'dbg'        # Jurassic dolerite
+    if a < 66:   return 'layer', ('dkbrown' if 'basalt' in d else 'blorange')                 # Cenozoic basalt / sediments
+    if a < 252:  return 'layer', 'nougat'                                                     # Triassic (Upper Parmeener)
+    if a < 310:                                                                              # Permian (Lower Parmeener)
         if 'diamictite' in d or 'boulder' in d or 'conglomerate' in d: return 'layer', 'dktan'
-        return 'layer', 'lbg'
-    if 'granite' in d or 'granodiorite' in d:      return 'basement', 'pink'
-    if a < 444:  return 'basement', 'olive'                                          # Silurian-Devonian
-    if a < 485:  return 'basement', 'mdblue'                                         # Ordovician
-    if a < 541:  return 'basement', 'sandgreen'                                      # Cambrian
-    return 'basement', ('white' if 'quartzite' in d else 'lavender')                 # Precambrian
+        return 'layer', 'sandblue'
+    if 'granite' in d or 'granodiorite' in d:      return 'basement', 'pink'                  # Devonian granites
+    if a < 444:  return 'basement', 'olive'                                                   # Silurian-Devonian
+    if a < 485:  return 'basement', 'mdblue'                                                  # Ordovician
+    if a < 541:  return 'basement', 'sandgreen'                                               # Cambrian
+    return 'basement', ('white' if 'quartzite' in d else 'lavender')                          # Precambrian
 
 
 def layer_order(units):

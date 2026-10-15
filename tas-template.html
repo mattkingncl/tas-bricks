@@ -759,6 +759,10 @@ function updateStats(){
 }
 const LEG=[['dbg','Dolerite & cliffs (studded)'],['lbg','Talus & scree (studded)'],['olive','Alpine heath'],['sandgreen','Cushion plants'],['tan','Buttongrass & beach'],['dkgreen','Forest'],['white','Spring snow','snow'],['tdblue','Water (tiles)'],['lbg','Urban: residential (tiles)','urb'],['dbg','Urban: commercial & transport (tiles)','urb'],['white','Buildings < 9 m','bldg'],['lbg','Buildings 9–25 m','bldg'],['sandblue','Buildings ≥ 25 m','bldg']];
 const FIRELEG=[['red','Bushfire this season'],['orange','Bushfire 1–5 years before'],['blorange','Bushfire 6–20 years before'],['nougat','Bushfire 21–60 years before'],['lavender','Planned burn ≤ 20 years before']];
+// rock colour groups (set by classify() in geology.py)
+const ROCKLEG=[['tan','Quaternary cover'],['blorange','Cenozoic sediments'],['dkbrown','Cenozoic basalt'],['dbg','Jurassic dolerite'],['nougat','Triassic sandstone & mudstone'],
+  ['sandblue','Permian marine & glaciomarine rocks'],['dktan','Permian glacial conglomerate'],['pink','Devonian granite'],['olive','Silurian–Devonian rocks'],['mdblue','Ordovician rocks'],
+  ['sandgreen','Cambrian rocks'],['white','Precambrian quartzite'],['lavender','Precambrian phyllite & schist'],['lbg','Other / unclassified']];
 const unitTxt = U => `${U.sym}: ${(U.desc||'').replace(/\.$/,'').slice(0,46)}`;
 function legend(){ if(!SC) return; let items=[];
   const fire = state.mode==='fire' && FIRE && FIRE.id===SC.id;
@@ -771,9 +775,9 @@ function legend(){ if(!SC) return; let items=[];
   if(state.lgm && !fire && ICET) items.push(['white','Glacier ice, last glaciation']);
   if(BATHY){ items.push(['dkblue','Sea water column'],['tan','Sea floor']); if(state.slr<0 && !fire) items.push(['dktan','Sea floor exposed by lower sea']); }
   if(state.mode==='water') items.push(['mdblue','Raindrop and its path (round tiles)'],['red','Catchment outline']);
-  if(geoSub() && !geoMap()){ const seen=new Set(), add=u=>{ const U=GEO.g.units[u-1]; if(!U) return; const key=U.col+U.sym; if(seen.has(key)) return; seen.add(key); items.push([COL[GEO.col[u]].k, 'Rock · '+unitTxt(U)]); };
-    GEO.g.layers.forEach(ids=>add(ids[0])); const bu=new Map(); for(const v of GBU) if(v) bu.set(v,(bu.get(v)||0)+1);
-    [...bu].sort((a,b)=>b[1]-a[1]).slice(0,4).forEach(([u])=>add(u)); }
+  if(geoSub() && !geoMap()){   // rock in the walls: one entry per colour (age group), youngest first
+    const used=new Set(); GEO.g.layers.forEach(ids=>ids.forEach(u=>used.add(COL[GEO.col[u]].k))); for(const v of GBU) if(v) used.add(COL[GEO.col[v]].k);
+    for(const [k,t] of ROCKLEG) if(used.has(k)) items.push([k,'Rock · '+t]); }
   else if(!geoMap()) items.push(['rbrown','Soil walls']);
   items.push(['black','Base plate']);
   document.getElementById('legend').innerHTML=items.map(([k,t])=>`<div><span class="sw" style="background:${hex(C[k])}"></span>${t}</div>`).join(''); }
