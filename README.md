@@ -84,3 +84,10 @@ raised to 3.3 m x `num_floors` where tagged; else residential 5 m, outbuilding 3
 Data: LIST Tasmania 25 m DEM, Hydrographic Areas, Landuse Live — Land Tasmania, CC BY 3.0 AU.
 Buildings: Overture Maps Foundation (© OpenStreetMap contributors, ODbL; Microsoft ML Buildings, ODbL).
 three.js r160 — MIT licence (lib/three/LICENSE).
+
+## Rendering performance
+* The shadow map is redrawn only when the model changes, and frames are drawn only when something changes.
+* Level of detail (tas-template.html, `LOD_PX`, `LOD_MAXHI`): bricks are drawn as plain boxes (12 triangles) and studs /
+  canopy plates as 6-sided shapes when a stud is smaller than `LOD_PX` pixels at the nearest point of the model, or when
+  the model draws more than `LOD_MAXHI` pieces; otherwise rounded bricks (~300 triangles). Hobart, hero view:
+  25 m 126 M -> 13 M triangles per frame; 75 m 20 M -> 1.5 M (full detail again when zoomed in).
