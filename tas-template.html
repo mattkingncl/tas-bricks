@@ -589,6 +589,9 @@ const studGeo=(()=>{const pts=[[0,0],[2.4,0],[2.4,1.45],[2.36,1.62],[2.25,1.7],[
 const roundPlateGeo=(()=>{const pts=[[0,0],[3.6,0],[3.9,0.3],[3.9,3.1],[3.8,3.2],[2.4,3.2],[2.4,4.65],[2.3,4.9],[0,4.9]].map(p=>new THREE.Vector2(p[0],p[1])); return new THREE.LatheGeometry(pts,20);})();
 const studGeoLo=(()=>{const pts=[[0,0],[2.4,0],[2.4,1.7],[0,1.7]].map(p=>new THREE.Vector2(p[0],p[1])); return new THREE.LatheGeometry(pts,8);})();
 const roundPlateGeoLo=(()=>{const pts=[[0,0],[3.9,0],[3.9,3.2],[2.4,3.2],[2.4,4.9],[0,4.9]].map(p=>new THREE.Vector2(p[0],p[1])); return new THREE.LatheGeometry(pts,8);})();
+// far-detail studs and canopy plates: 6 sides, no hidden underside
+const studGeoFar=(()=>{const pts=[[2.4,0],[2.4,1.7],[0,1.7]].map(p=>new THREE.Vector2(p[0],p[1])); return new THREE.LatheGeometry(pts,6);})();
+const roundPlateGeoFar=(()=>{const pts=[[3.9,0],[3.9,3.2],[2.4,3.2],[2.4,4.9],[0,4.9]].map(p=>new THREE.Vector2(p[0],p[1])); return new THREE.LatheGeometry(pts,6);})();
 const unitBox=new THREE.BoxGeometry(1,1,1); unitBox.translate(0,0.5,0);
 
 let model=null, S=null, stepMax=0;
@@ -602,26 +605,70 @@ function placePart(p,M){ const rot=p.w>p.d; v.set((p.x+p.w/2)*PITCH, p.z*PLATE, 
 function upperBound(arr,val){let lo=0,hi=arr.length;while(lo<hi){const m=(lo+hi)>>1; if(arr[m]<=val) lo=m+1; else hi=m;}return lo;}
 const lakeId = name => { const i=(SC.data.lakes||[]).findIndex(n=>n.toUpperCase()===name.toUpperCase()); return i<0?-1:i+1; };
 
+// ---- Level of detail by tile. Large models are split into TILE x TILE-stud tiles. A tile near the camera (a stud there
+// spans >= LOD_PX pixels) is drawn with rounded bricks and full studs; a far tile with plain boxes and 6-sided studs,
+// which look the same at that size. Rounded meshes are made the first time a tile comes near. Tiles off screen are culled.
+// Models with at most LOD_MIN visible pieces stay in one tile at full detail.
+const TILE=48, LOD_PX=12, LOD_MIN=20000, nearPt=new THREE.Vector3();
+const studAt=(s,M)=>M.makeTranslation((s.x+.5)*PITCH,s.t*PLATE,(s.y+.5)*PITCH);
+const boxAt=(p,M)=>M.compose(v.set((p.x+p.w/2)*PITCH,p.z*PLATE,(p.y+p.d/2)*PITCH),q0,new THREE.Vector3(p.w*PITCH-2*GAP,KIND[p.k].h*PLATE-0.04,p.d*PITCH-2*GAP));
+function curStepCount(z){ const k=+document.getElementById('step').value; return k>=stepMax ? z.length : upperBound(z,k); }
+function buildTiles(){
+  const vis=S.parts.filter(p=>p.vis); S.lodOn = vis.length>LOD_MIN;
+  const T=S.lodOn?TILE:Math.max(NX,NY), tx=Math.ceil(NX/T), ty=Math.ceil(NY/T);
+  S.tiles=[]; for(let j=0;j<ty;j++)for(let i=0;i<tx;i++) S.tiles.push({x0:i*T,y0:j*T,x1:Math.min(NX,(i+1)*T),y1:Math.min(NY,(j+1)*T),parts:[],studs:[],canopy:[],top:1,hi:null,lo:null,near:null});
+  const tileOf=(x,y)=>S.tiles[Math.floor(y/T)*tx+Math.floor(x/T)];
+  for(const p of vis){ const t=tileOf(p.x,p.y); t.parts.push(p); t.top=Math.max(t.top,p.z+KIND[p.k].h); }
+  for(const st of S.studsTop) tileOf(st.x,st.y).studs.push(st);
+  for(const c of S.canopy) tileOf(c.x,c.y).canopy.push(c);
+  S.meshes=[]; S.studMeshes=[]; S.canopyMeshes=[];
+  for(const t of S.tiles){
+    t.parts.sort((a,b)=>a.z-b.z); t.studs.sort((a,b)=>a.t-b.t); t.canopy.sort((a,b)=>a.t-b.t);
+    if(t.studs.length){ const m=inst(S.SHELL?studGeoLo:studGeo,plastic,t.studs,studAt); m.userData.z=t.studs.map(st=>st.t-1);
+      m.userData.hi=m.geometry; m.userData.lo=studGeoFar; model.add(m); S.studMeshes.push(m); t.studMesh=m; }
+    if(t.canopy.length){ const m=inst(S.SHELL?roundPlateGeoLo:roundPlateGeo,plastic,t.canopy,studAt); m.userData.z=t.canopy.map(c=>c.t);
+      m.userData.hi=m.geometry; m.userData.lo=roundPlateGeoFar; m.visible=state.trees; model.add(m); S.canopyMeshes.push(m); t.canopyMesh=m; }
+  }
+  if(!S.lodOn) S.tiles.forEach(t=>setTileNear(t,true)); else applyLOD();
+}
+function tileHi(t){   // rounded bricks, one instanced mesh per part size (and water)
+  if(t.hi) return t.hi; const groups={}; t.hi=[];
+  for(const p of t.parts){ const key=p.k+Math.min(p.w,p.d)+'x'+Math.max(p.w,p.d)+(p.c===WATER?'w':''); (groups[key]||(groups[key]=[])).push(p); }
+  for(const items of Object.values(groups)){ const p0=items[0], wet=p0.c===WATER;
+    const m=inst(partGeo(p0.k,Math.min(p0.w,p0.d),Math.max(p0.w,p0.d)), wet?waterMat:plastic, items, placePart);
+    if(wet){m.castShadow=false; m.renderOrder=2;} m.count=curStepCount(m.userData.z); model.add(m); S.meshes.push(m); t.hi.push(m); }
+  return t.hi; }
+function tileLo(t){   // plain boxes: one instanced unit box scaled per part (plus one for water)
+  if(t.lo) return t.lo; t.lo=[];
+  for(const wet of [false,true]){ const items=t.parts.filter(p=>(p.c===WATER)===wet); if(!items.length) continue;
+    const m=inst(unitBox, wet?waterMat:plastic, items, boxAt); if(wet){m.castShadow=false; m.renderOrder=2;}
+    m.count=curStepCount(m.userData.z); model.add(m); S.meshes.push(m); t.lo.push(m); }
+  return t.lo; }
+function setTileNear(t,near){
+  if(t.near===near) return false; t.near=near;
+  const show=near?tileHi(t):tileLo(t), hide=near?t.lo:t.hi;
+  show.forEach(m=>m.visible=true); if(hide) hide.forEach(m=>m.visible=false);
+  for(const m of [t.studMesh,t.canopyMesh]) if(m) m.geometry = near ? m.userData.hi : m.userData.lo;
+  return true; }
+function applyLOD(){   // per tile: on-screen stud size at the tile's nearest point
+  if(!S||!S.tiles||!S.lodOn) return; const p=camera.position, f=(renderer.domElement.height/2)/Math.tan(camera.fov*Math.PI/360); let changed=false;
+  for(const t of S.tiles){
+    nearPt.set(Math.min(t.x1*PITCH,Math.max(t.x0*PITCH,p.x)), Math.min(t.top*PLATE,Math.max(0,p.y)), Math.min(t.y1*PITCH,Math.max(t.y0*PITCH,p.z)));
+    const px=PITCH*f/Math.max(1,p.distanceTo(nearPt));
+    if(setTileNear(t, px>=LOD_PX)) changed=true; }
+  if(changed) renderer.shadowMap.needsUpdate=true; }
 function rebuild(){
   if(model){ scene.remove(model); model.traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); }
   const fire = state.fire && FIRE && FIRE.id===SC.id;
   S=build({ve:state.ve, snow:state.snow, slr:state.slr, bldg:state.bldg, geoMap:geoMap(), lgm:state.lgm, fireYear:fire?fireSeason():null});
   model=new THREE.Group(); scene.add(model);
-  const groups={}, hidden=[];
-  for(const p of S.parts){ if(!p.vis){hidden.push(p);continue;} const key=p.k+Math.min(p.w,p.d)+'x'+Math.max(p.w,p.d)+(p.c===WATER?'w':''); (groups[key]||(groups[key]=[])).push(p); }
-  S.meshes=[];
-  for(const [key,items] of Object.entries(groups)){ items.sort((a,b)=>a.z-b.z); const p0=items[0];
-    const wet=p0.c===WATER; const m=inst(partGeo(p0.k,Math.min(p0.w,p0.d),Math.max(p0.w,p0.d)), wet?waterMat:plastic, items, placePart);
-    if(wet){m.castShadow=false; m.renderOrder=2;} model.add(m); S.meshes.push(m); }
+  const hidden=S.parts.filter(p=>!p.vis);
+  buildTiles();
   hidden.sort((a,b)=>a.z-b.z);
   S.interior=inst(unitBox,plastic,hidden,(p,M)=>M.compose(v.set((p.x+p.w/2)*PITCH,p.z*PLATE,(p.y+p.d/2)*PITCH),q0,new THREE.Vector3(p.w*PITCH-2*GAP,KIND[p.k].h*PLATE-0.04,p.d*PITCH-2*GAP)));
   S.interior.count=0; model.add(S.interior);
-  S.studsTop.sort((a,b)=>a.t-b.t);
-  S.studMesh=inst(S.SHELL?studGeoLo:studGeo,plastic,S.studsTop,(s,M)=>M.makeTranslation((s.x+.5)*PITCH,s.t*PLATE,(s.y+.5)*PITCH)); S.studMesh.userData.z=S.studsTop.map(s=>s.t-1); model.add(S.studMesh);
   S.cutMesh=new THREE.InstancedMesh(studGeo,plastic,Math.max(1,NX*NY)); S.cutMesh.count=0; S.cutMesh.castShadow=true; model.add(S.cutMesh);
   S.byT={}; for(const s of S.studsCut)(S.byT[s.t]||(S.byT[s.t]=[])).push(s);
-  S.canopy.sort((a,b)=>a.t-b.t);
-  S.canopyMesh=inst(S.SHELL?roundPlateGeoLo:roundPlateGeo,plastic,S.canopy,(s,M)=>M.makeTranslation((s.x+.5)*PITCH,s.t*PLATE,(s.y+.5)*PITCH)); S.canopyMesh.userData.z=S.canopy.map(s=>s.t); S.canopyMesh.visible=state.trees; model.add(S.canopyMesh);
   S.shed=[]; S.shedH=0;
   S.extraParts=[{k:'Plate, Round 1x1',id:'4073',c:C.dkgreen,n:S.canopy.filter(s=>s.c===C.dkgreen).length},{k:'Plate, Round 1x1',id:'4073',c:C.green,n:S.canopy.filter(s=>s.c===C.green).length}];
   if(SC.extra==='boatshed'){ const bs=boatshedCell(); if(bs && !S.IP[bs.y*NX+bs.x] && !S.ISKIN[bs.y*NX+bs.x]){ const bsH=S.H[bs.y*NX+bs.x];
@@ -729,8 +776,8 @@ function applyStep(k){
   requestRender(true);   // visible layers changed: redraw shadows too
   const full = k>=stepMax;
   for(const m of S.meshes){ m.count=upperBound(m.userData.z,k); }
-  S.studMesh.count=upperBound(S.studMesh.userData.z,k);
-  S.canopyMesh.count= full? S.canopy.length : 0;
+  for(const m of S.studMeshes) m.count=upperBound(m.userData.z,k);
+  for(const m of S.canopyMeshes) m.count= full? m.userData.z.length : 0;
   S.interior.count= full? 0 : upperBound(S.interior.userData.z,k);
   const cut = full? [] : (S.byT[k+1]||[]);
   cut.forEach((s,i)=>{tmpM.makeTranslation((s.x+.5)*PITCH,s.t*PLATE,(s.y+.5)*PITCH); S.cutMesh.setMatrixAt(i,tmpM); S.cutMesh.setColorAt(i,colour(s.c));});
@@ -920,7 +967,7 @@ tog('lgmT','lgm',()=>heavy(async()=>{ if(state.lgm && SC.data.ice){ try{ await l
 tog('labelsT','labels',()=>applyStep(+document.getElementById('step').value));
 // Canopy and Geology map are exclusive: the map replaces the vegetation plate; switching either on switches the other off
 const setTog=(id,key,v)=>{ state[key]=v; $(id).setAttribute('aria-pressed',v); };
-tog('trees','trees',()=>{ if(state.trees && state.geo){ setTog('geoT','geo',false); heavy(()=>{ rebuild(); legend(); }); } else { S.canopyMesh.visible=state.trees; requestRender(true); } });
+tog('trees','trees',()=>{ if(state.trees && state.geo){ setTog('geoT','geo',false); heavy(()=>{ rebuild(); legend(); }); } else { S.canopyMeshes.forEach(m=>m.visible=state.trees); requestRender(true); } });
 tog('fireT','fire',()=>heavy(async()=>{ if(state.fire){ try{ await loadFire(); }catch(e){ console.warn(e); state.fire=false; $('fireT').setAttribute('aria-pressed',false); } } rebuild(); legend(); modeUI(); }));
 tog('bldgT','bldg',()=>heavy(()=>{rebuild(); legend();}));
 tog('geoT','geo',()=>{ setTog('trees','trees',!state.geo); heavy(()=>{ rebuild(); legend(); }); });
@@ -980,11 +1027,11 @@ function loop(now){
   if(DROP){ dropTick(now); moving=true; }
   if(controls.update()) moving=true;            // true while the camera moves, including damping
   if(moving || dirty){                          // otherwise nothing changed: skip the frame
-    dirty=false; renderer.render(scene,camera); if(S) updateLabels();
+    dirty=false; applyLOD(); renderer.render(scene,camera); if(S) updateLabels();
     const az=Math.atan2(camera.position.x-controls.target.x, camera.position.z-controls.target.z);
     needle.style.transform=`rotate(${az*180/Math.PI}deg)`; }
   requestAnimationFrame(loop); }
-if(new URLSearchParams(location.search).has('debug')) window.__tb={get frames(){ return renderer.info.render.frame; }, time:()=>{ const t=performance.now(); rebuild(); return Math.round(performance.now()-t); }, state, pick:(x,y)=>pickCell({clientX:x,clientY:y}), release:releaseDrop, get S(){return S;}, get NX(){return NX;}};
+if(new URLSearchParams(location.search).has('debug')) window.__tb={camera, controls, applyLOD, get tiles(){ return S&&S.tiles&&S.tiles.map(t=>t.near); }, get frames(){ return renderer.info.render.frame; }, time:()=>{ const t=performance.now(); rebuild(); return Math.round(performance.now()-t); }, state, pick:(x,y)=>pickCell({clientX:x,clientY:y}), release:releaseDrop, get S(){return S;}, get NX(){return NX;}};
 async function availability(){
   if(Object.keys(DATA).length){ AVAIL=new Set(Object.keys(DATA)); }
   else { try{ const idx=await fetchJSON('data/index.json'); AVAIL=new Set(Object.keys(idx)); }catch(e){ AVAIL=new Set(SCENES.map(s=>s.id)); } }
