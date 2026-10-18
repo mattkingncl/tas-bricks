@@ -658,7 +658,7 @@ function applyLOD(){   // per tile: on-screen stud size at the tile's nearest po
     if(setTileNear(t, px>=LOD_PX)) changed=true; }
   if(changed) renderer.shadowMap.needsUpdate=true; }
 function rebuild(){
-  if(model){ scene.remove(model); model.traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); }
+  if(model){ scene.remove(model); model.traverse(o=>{ if(o.isInstancedMesh) o.dispose(); else if(o.geometry && o.geometry.type==='TubeGeometry') o.geometry.dispose(); }); }
   const fire = state.fire && FIRE && FIRE.id===SC.id;
   S=build({ve:state.ve, snow:state.snow, slr:state.slr, bldg:state.bldg, geoMap:geoMap(), lgm:state.lgm, fireYear:fire?fireSeason():null});
   model=new THREE.Group(); scene.add(model);
@@ -699,6 +699,11 @@ const tileRoundGeo=(()=>{const pts=[[0,0],[3.9,0],[3.9,3.0],[3.7,3.2],[0,3.2]].m
 // drop and trail in a saturated azure that stands out from tan, green, white and the dark-blue sea; catchment edge in red
 const AZURE=0x078BC9;
 const dropMat=new THREE.MeshStandardMaterial({color:AZURE,emissive:0x05507a,emissiveIntensity:0.6,roughness:0.15,metalness:0});
+// the drop's track: a tube just above the ground, plus a faint copy drawn through the terrain so the route stays
+// visible where it runs down a ravine or behind a ridge (the drop has the same see-through copy)
+const tubeMat=new THREE.MeshStandardMaterial({color:AZURE,emissive:0x05507a,emissiveIntensity:0.6,roughness:0.25,metalness:0});
+const ghostMat=new THREE.MeshBasicMaterial({color:0x2fb4ff,transparent:true,opacity:0.45,depthTest:false,depthWrite:false});
+const TUBE_SEG=4, TUBE_RAD=8;
 const trailMat=new THREE.MeshStandardMaterial({color:AZURE,emissive:0x05507a,emissiveIntensity:0.35,roughness:0.3,metalness:0});
 const edgeMat=new THREE.MeshStandardMaterial({color:COL[C.red].hex,emissive:0x5a0a04,emissiveIntensity:0.4,roughness:0.4,metalness:0});
 // unit teardrop (radius 1, height ~2.6), scaled to the model size when shown
@@ -714,6 +719,8 @@ function prepWater(){
   S.trail=new THREE.InstancedMesh(tileRoundGeo,trailMat,MAXTRAIL); S.trail.count=0; S.trail.castShadow=false; model.add(S.trail);
   S.dropR=Math.max(3, 0.006*Math.max(W,Dp));                       // drop radius (mm): ~0.6% of the model's long side
   S.dropMesh=new THREE.Mesh(dropGeo,dropMat); S.dropMesh.scale.setScalar(S.dropR); S.dropMesh.visible=false; S.dropMesh.castShadow=false; model.add(S.dropMesh);
+  { const g=new THREE.Mesh(dropGeo,ghostMat); g.renderOrder=20; S.dropMesh.add(g); }   // see-through copy
+  S.tubes=[]; S.tubeR=Math.max(1.5, 0.0025*Math.max(W,Dp));
   DROP=null;
 }
 const topY = i => S.H[i]*PLATE;
@@ -734,7 +741,12 @@ function releaseDrop(i0){
   edges.forEach(([ex,ez,alongZ,y],k)=>{ S.basin.setMatrixAt(k, tmpM.compose(v.set(ex*PITCH, y, ez*PITCH), q0, alongZ ? new THREE.Vector3(ew,eh,PITCH) : new THREE.Vector3(PITCH,eh,ew))); });
   S.basin.instanceMatrix.needsUpdate=true; model.add(S.basin);
   // slow enough to follow: 36-280 ms per block, ~14 s for a long path
-  DROP={path, t0:performance.now(), step:Math.min(280,Math.max(36,14000/path.length)), laid:0, basinKm2:cells.length*CELL*CELL/1e6};
+  // track tube along the path, revealed as the drop moves
+  if(path.length>1){ const r=S.tubeR, pts=path.map(i=>new THREE.Vector3((i%NX+.5)*PITCH, topY(i)+(S.WET[i]?0.5*r:PLATE+r), (((i/NX)|0)+.5)*PITCH));
+    const geo=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts,false,'centripetal'), (path.length-1)*TUBE_SEG, r, TUBE_RAD, false);
+    const solid=new THREE.Mesh(geo,tubeMat), ghost=new THREE.Mesh(geo,ghostMat); ghost.renderOrder=20; geo.setDrawRange(0,0);
+    model.add(solid,ghost); S.tubes.push(solid,ghost); }
+  DROP={path, tube:S.tubes.length?S.tubes[S.tubes.length-1].geometry:null, t0:performance.now(), step:Math.min(280,Math.max(36,14000/path.length)), laid:0, basinKm2:cells.length*CELL*CELL/1e6};
   S.dropMesh.visible=true; requestRender(); waterSay('The drop is on its way…');
 }
 function dropTick(now){
@@ -744,7 +756,8 @@ function dropTick(now){
   S.dropMesh.position.set(xa+(xb-xa)*f, Math.max(topY(a),topY(b))+(S.WET[a]?0:PLATE)+0.25*S.dropR*Math.abs(Math.sin(u*Math.PI)), za+(zb-za)*f);
   while(DROP.laid<=k && DROP.laid<path.length){ const i=path[DROP.laid++]; if(S.WET[i] || S.trail.count>=MAXTRAIL) continue;
     S.trail.setMatrixAt(S.trail.count, tmpM.makeTranslation((i%NX+.5)*PITCH, topY(i), (((i/NX)|0)+.5)*PITCH)); S.trail.count++; S.trail.instanceMatrix.needsUpdate=true; }
-  if(u>=path.length-1){ const d=DROP; DROP=null; S.dropMesh.position.y=topY(path[path.length-1])+(S.WET[path[path.length-1]]?0:PLATE); waterReport(d); }
+  if(DROP.tube) DROP.tube.setDrawRange(0, Math.min((path.length-1)*TUBE_SEG, Math.floor(u*TUBE_SEG))*TUBE_RAD*6);
+  if(u>=path.length-1){ const d=DROP; if(d.tube) d.tube.setDrawRange(0,Infinity); DROP=null; S.dropMesh.position.y=topY(path[path.length-1])+(S.WET[path[path.length-1]]?0:PLATE); waterReport(d); }
 }
 function waterReport(d){
   const p=d.path, i0=p[0], iN=p[p.length-1]; let len=0; for(let k=1;k<p.length;k++){ const a=p[k-1],b=p[k]; len+= (a%NX!==b%NX && ((a/NX)|0)!==((b/NX)|0)) ? Math.SQRT2 : 1; } len*=CELL/1000;
@@ -758,7 +771,7 @@ function waterReport(d){
   waterSay(`From <b>${fmt(Math.round(z0))} m</b> the drop ${end}${lakes.length?`, via ${lakes.join(', ')}`:''}: <b>${len.toFixed(len<10?1:0)} km</b> downhill, falling <b>${fmt(Math.round(z0-z1))} m</b>. `+
     `The red outline shows its catchment within the model: <b>${fmt(Math.round(d.basinKm2*10)/10)} km²</b>${S.outlet[iN]?'':' so far'}.`);
 }
-function clearDrops(){ requestRender(); DROP=null; if(S.trail){ S.trail.count=0; } if(S.dropMesh) S.dropMesh.visible=false; if(S.basin){ model.remove(S.basin); S.basin.dispose(); S.basin=null; } }
+function clearDrops(){ requestRender(); DROP=null; if(S.tubes){ S.tubes.forEach(m=>{ model.remove(m); m.geometry.dispose(); }); S.tubes=[]; } if(S.trail){ S.trail.count=0; } if(S.dropMesh) S.dropMesh.visible=false; if(S.basin){ model.remove(S.basin); S.basin.dispose(); S.basin=null; } }
 // pick the model cell under the pointer by marching the view ray through the block heights
 const raycaster=new THREE.Raycaster(), ndc=new THREE.Vector2();
 function pickCell(ev){
@@ -783,7 +796,7 @@ function applyStep(k){
   cut.forEach((s,i)=>{tmpM.makeTranslation((s.x+.5)*PITCH,s.t*PLATE,(s.y+.5)*PITCH); S.cutMesh.setMatrixAt(i,tmpM); S.cutMesh.setColorAt(i,colour(s.c));});
   S.cutMesh.count=cut.length; S.cutMesh.instanceMatrix.needsUpdate=true; if(S.cutMesh.instanceColor) S.cutMesh.instanceColor.needsUpdate=true;
   S.shed.forEach(o=>o.visible=k>=S.shedH);
-  for(const o of [S.trail,S.dropMesh,S.basin,S.fireMesh]) if(o) o.visible=full;
+  for(const o of [S.trail,S.dropMesh,S.basin,S.fireMesh,...(S.tubes||[])]) if(o) o.visible=full;
   document.getElementById('stepOut').textContent = full? 'complete' : `layer ${k+1} of ${stepMax+1} · ${(Z0+(k+1-BASE)*S.mPerPlate).toFixed(0)} m`;
   document.getElementById('labels').style.visibility = full&&state.labels ? 'visible':'hidden';
 }
@@ -828,7 +841,7 @@ function legend(){ if(!SC) return; let items=[];
   else { const has={snow:state.snow, urb:URB&&URB.some(v=>v), bldg:!!BLDF&&state.bldg}; items.push(...LEG.filter(([,,k])=>!k||has[k]).map(([c,t])=>[c,t])); }
   if(state.lgm && ICET) items.push(['white','Glacier ice, last glaciation']);
   if(BATHY){ items.push(['dkblue','Sea water column'],['tan','Sea floor']); if(state.slr<0) items.push(['dktan','Sea floor exposed by lower sea']); }
-  if(state.mode==='water') items.push(['mdblue','Raindrop and its path (round tiles)'],['red','Catchment outline']);
+  if(state.mode==='water') items.push(['mdblue','Raindrop and its track (tube and round tiles)'],['red','Catchment outline']);
   if(geoSub() && !geoMap()){   // rock in the walls: one entry per colour (age group), youngest first
     const used=new Set(); GEO.g.layers.forEach(ids=>ids.forEach(u=>used.add(COL[GEO.col[u]].k))); for(const v of GBU) if(v) used.add(COL[GEO.col[v]].k);
     for(const [k,t] of ROCKLEG) if(used.has(k)) items.push([k,'Rock · '+t]); }
