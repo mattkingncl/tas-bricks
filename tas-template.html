@@ -712,7 +712,7 @@ function prepWater(){
   const out=new Uint8Array(N); for(let i=0;i<N;i++) if(S.WET[i] && (LAKE[i]===SEA || FLOOD[i])) out[i]=1;   // sea and flooded land are outlets
   S.route=drainage(H_M, out, NX, NY); S.outlet=out;
   S.trail=new THREE.InstancedMesh(tileRoundGeo,trailMat,MAXTRAIL); S.trail.count=0; S.trail.castShadow=false; model.add(S.trail);
-  S.dropR=Math.max(6, 0.012*Math.max(W,Dp));                       // drop radius (mm): ~1.2% of the model's long side
+  S.dropR=Math.max(3, 0.006*Math.max(W,Dp));                       // drop radius (mm): ~0.6% of the model's long side
   S.dropMesh=new THREE.Mesh(dropGeo,dropMat); S.dropMesh.scale.setScalar(S.dropR); S.dropMesh.visible=false; S.dropMesh.castShadow=false; model.add(S.dropMesh);
   DROP=null;
 }
@@ -733,8 +733,8 @@ function releaseDrop(i0){
   const ew=Math.max(1.2, 0.18*PITCH), eh=STUD_H+2.0;
   edges.forEach(([ex,ez,alongZ,y],k)=>{ S.basin.setMatrixAt(k, tmpM.compose(v.set(ex*PITCH, y, ez*PITCH), q0, alongZ ? new THREE.Vector3(ew,eh,PITCH) : new THREE.Vector3(PITCH,eh,ew))); });
   S.basin.instanceMatrix.needsUpdate=true; model.add(S.basin);
-  // slow enough to follow: 72-560 ms per block, ~28 s for a long path
-  DROP={path, t0:performance.now(), step:Math.min(560,Math.max(72,28000/path.length)), laid:0, basinKm2:cells.length*CELL*CELL/1e6};
+  // slow enough to follow: 36-280 ms per block, ~14 s for a long path
+  DROP={path, t0:performance.now(), step:Math.min(280,Math.max(36,14000/path.length)), laid:0, basinKm2:cells.length*CELL*CELL/1e6};
   S.dropMesh.visible=true; requestRender(); waterSay('The drop is on its way…');
 }
 function dropTick(now){
