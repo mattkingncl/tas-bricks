@@ -220,7 +220,7 @@ const SCENES = [
   blurb:'The most remote, hardest-won summit in Australia’s south-west wilderness.'},
  {id:'nut', res0:50, ve:5, name:'The Nut, Stanley', region:'Circular Head', hero:{label:'From Bass Strait', az:190, el:22, d:1.1, target:'The Nut', lead:0.03, mix:0.2},
   blurb:'A 143 m basalt volcanic plug tethered to the coast by a narrow isthmus.'},
- {id:'tasmania', ve:40, veOpts:[5,10,20,40], name:'All of Tasmania', region:'lutruwita / Tasmania & Bass Strait', hero:{label:'From the south-west', az:205, el:40, d:1.2, target:[455000,5345000]},
+ {id:'tasmania', ve:40, veOpts:[5,10,20,40], name:'All of Tasmania', region:'lutruwita / Tasmania & Bass Strait', hero:{label:'From the south-west', az:205, el:40, d:1.6, target:[455000,5345000]},
   blurb:'The whole island at 1 km, with the sea floor of Bass Strait. Lower the sea to the ice-age −120 m, or follow a raindrop to the sea.'},
 ];
 
@@ -555,6 +555,11 @@ const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreferenc
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
 renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+// Performance: the sun is fixed relative to the model, so the shadow map is redrawn only when the model changes,
+// and frames are drawn only when something changes (camera, tween, drop animation, or a requestRender call).
+renderer.shadowMap.autoUpdate=false;
+let dirty=true;
+function requestRender(shadow){ dirty=true; if(shadow) renderer.shadowMap.needsUpdate=true; }
 stage.appendChild(renderer.domElement);
 const scene=new THREE.Scene();
 const pmrem=new THREE.PMREMGenerator(renderer); scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
@@ -569,7 +574,7 @@ const table=new THREE.Mesh(new THREE.CylinderGeometry(1,1,6,96),new THREE.MeshSt
 table.receiveShadow=true; scene.add(table);
 let W, Dp, CX, CZ, KS=1;
 const SUN0=sun.position.clone();
-function layout(){ W=NX*PITCH; Dp=NY*PITCH; CX=W/2; CZ=Dp/2; const S0=Math.max(W,Dp); KS=S0/384;
+function layout(){ requestRender(true); W=NX*PITCH; Dp=NY*PITCH; CX=W/2; CZ=Dp/2; const S0=Math.max(W,Dp); KS=S0/384;
   sun.position.copy(SUN0).multiplyScalar(Math.max(1,KS)).add(new THREE.Vector3(CX,0,CZ)); sun.target.position.set(CX,0,CZ);
   const hs=0.9*S0; Object.assign(sun.shadow.camera,{left:-hs,right:hs,top:hs,bottom:-hs,far:2600*Math.max(1,KS)}); sun.shadow.camera.updateProjectionMatrix();
   table.scale.set(0.72*Math.hypot(W,Dp),1,0.72*Math.hypot(W,Dp)); table.position.set(CX,-3.05,CZ); controls.maxDistance=2600*KS; }
@@ -636,7 +641,7 @@ function rebuild(){
   S.drops=[]; S.route=null; S.basin=null; S.trail=null; S.dropMesh=null;
   if(state.mode==='water') prepWater();
   stepMax=S.maxH-1; const st=document.getElementById('step'); st.max=stepMax; st.value=stepMax; applyStep(stepMax);
-  updateStats(); placeLabels(); modeReadout();
+  updateStats(); placeLabels(); modeReadout(); requestRender(true);
 }
 function boatshedCell(){ const k=lakeId('Dove Lake'); if(k<0) return null;
   const y=Math.floor((N1-5388300)/CELL); for(let x=Math.floor((412150-E0)/CELL);x<NX;x++){const i=y*NX+x; if(LAKE[i]===k) return {x:x-1,y};} return null; }
@@ -658,9 +663,9 @@ let DROP=null;   // running animation {path, t0, step}
 function prepWater(){
   const out=new Uint8Array(N); for(let i=0;i<N;i++) if(S.WET[i] && (LAKE[i]===SEA || FLOOD[i])) out[i]=1;   // sea and flooded land are outlets
   S.route=drainage(H_M, out, NX, NY); S.outlet=out;
-  S.trail=new THREE.InstancedMesh(tileRoundGeo,trailMat,MAXTRAIL); S.trail.count=0; S.trail.castShadow=true; model.add(S.trail);
-  S.dropR=Math.max(6, 0.005*Math.max(W,Dp));                       // drop radius (mm): ~1.2% of the model's long side
-  S.dropMesh=new THREE.Mesh(dropGeo,dropMat); S.dropMesh.scale.setScalar(S.dropR); S.dropMesh.visible=false; S.dropMesh.castShadow=true; model.add(S.dropMesh);
+  S.trail=new THREE.InstancedMesh(tileRoundGeo,trailMat,MAXTRAIL); S.trail.count=0; S.trail.castShadow=false; model.add(S.trail);
+  S.dropR=Math.max(6, 0.012*Math.max(W,Dp));                       // drop radius (mm): ~1.2% of the model's long side
+  S.dropMesh=new THREE.Mesh(dropGeo,dropMat); S.dropMesh.scale.setScalar(S.dropR); S.dropMesh.visible=false; S.dropMesh.castShadow=false; model.add(S.dropMesh);
   DROP=null;
 }
 const topY = i => S.H[i]*PLATE;
@@ -681,8 +686,8 @@ function releaseDrop(i0){
   edges.forEach(([ex,ez,alongZ,y],k)=>{ S.basin.setMatrixAt(k, tmpM.compose(v.set(ex*PITCH, y, ez*PITCH), q0, alongZ ? new THREE.Vector3(ew,eh,PITCH) : new THREE.Vector3(PITCH,eh,ew))); });
   S.basin.instanceMatrix.needsUpdate=true; model.add(S.basin);
   // slow enough to follow: 72-560 ms per block, ~28 s for a long path
-  DROP={path, t0:performance.now(), step:Math.min(280,Math.max(36,20000/path.length)), laid:0, basinKm2:cells.length*CELL*CELL/1e6};
-  S.dropMesh.visible=true; waterSay('The drop is on its way…');
+  DROP={path, t0:performance.now(), step:Math.min(560,Math.max(72,28000/path.length)), laid:0, basinKm2:cells.length*CELL*CELL/1e6};
+  S.dropMesh.visible=true; requestRender(); waterSay('The drop is on its way…');
 }
 function dropTick(now){
   if(!DROP || !S.dropMesh) return; const {path,step}=DROP, u=(now-DROP.t0)/step, k=Math.min(path.length-1,Math.floor(u)), f=Math.min(1,u-k);
@@ -705,7 +710,7 @@ function waterReport(d){
   waterSay(`From <b>${fmt(Math.round(z0))} m</b> the drop ${end}${lakes.length?`, via ${lakes.join(', ')}`:''}: <b>${len.toFixed(len<10?1:0)} km</b> downhill, falling <b>${fmt(Math.round(z0-z1))} m</b>. `+
     `The red outline shows its catchment within the model: <b>${fmt(Math.round(d.basinKm2*10)/10)} km²</b>${S.outlet[iN]?'':' so far'}.`);
 }
-function clearDrops(){ DROP=null; if(S.trail){ S.trail.count=0; } if(S.dropMesh) S.dropMesh.visible=false; if(S.basin){ model.remove(S.basin); S.basin.dispose(); S.basin=null; } }
+function clearDrops(){ requestRender(); DROP=null; if(S.trail){ S.trail.count=0; } if(S.dropMesh) S.dropMesh.visible=false; if(S.basin){ model.remove(S.basin); S.basin.dispose(); S.basin=null; } }
 // pick the model cell under the pointer by marching the view ray through the block heights
 const raycaster=new THREE.Raycaster(), ndc=new THREE.Vector2();
 function pickCell(ev){
@@ -720,6 +725,7 @@ function pickCell(ev){
   return -1; }
 
 function applyStep(k){
+  requestRender(true);   // visible layers changed: redraw shadows too
   const full = k>=stepMax;
   for(const m of S.meshes){ m.count=upperBound(m.userData.z,k); }
   S.studMesh.count=upperBound(S.studMesh.userData.z,k);
@@ -818,7 +824,7 @@ const VIEWS={
   plan:()=>{ const t=new THREE.Vector3(CX,0,CZ); return {pos:fitPos(t,new THREE.Vector3(0,1,0.0004)).toArray(), tgt:t.toArray()}; },
 };
 let tween=null;
-function setView(name,instant){ const V=VIEWS[name](); const from={p:camera.position.clone(),t:controls.target.clone()}; const to={p:new THREE.Vector3(...V.pos),t:new THREE.Vector3(...V.tgt)};
+function setView(name,instant){ requestRender(); const V=VIEWS[name](); const from={p:camera.position.clone(),t:controls.target.clone()}; const to={p:new THREE.Vector3(...V.pos),t:new THREE.Vector3(...V.tgt)};
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(instant||reduce){camera.position.copy(to.p);controls.target.copy(to.t);tween=null;return;}
   tween={from,to,t0:performance.now(),dur:1100}; }
@@ -899,7 +905,9 @@ document.getElementById('res').addEventListener('click',e=>{const b=e.target.clo
     const k=Math.max(W,Dp)/S0; tween=null; camera.position.copy(cp.multiplyScalar(k)); controls.target.copy(ct.multiplyScalar(k)); controls.update(); });});
 document.getElementById('views').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; pressGroup(e.currentTarget,b); state.view=b.dataset.v; setView(state.view);});
 const busy=document.getElementById('busy');
-function heavy(fn){ busy.hidden=false; setTimeout(async()=>{ await fn(); busy.hidden=true; },30); }
+function heavy(fn){ busy.hidden=false; setTimeout(async()=>{ await fn(); busy.hidden=true; requestRender(true); },30); }
+// any control in the panel may change what is drawn
+['click','input'].forEach(ev=>document.getElementById('panel').addEventListener(ev,()=>requestRender()));
 function veButtons(){ const opts=SC.veOpts||[1,2,3,4,5]; if(!opts.includes(state.ve)) state.ve=opts[Math.min(2,opts.length-1)];
   $('ve').innerHTML=opts.map(v=>`<button data-ve="${v}" aria-pressed="${v===state.ve}">${v}×${v===1?' true':''}</button>`).join(''); }
 document.getElementById('ve').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; pressGroup(e.currentTarget,b); state.ve=+b.dataset.ve; heavy(()=>{rebuild();});});
@@ -911,7 +919,7 @@ tog('lgmT','lgm',()=>heavy(async()=>{ if(state.lgm && SC.data.ice){ try{ await l
 tog('labelsT','labels',()=>applyStep(+document.getElementById('step').value));
 // Canopy and Geology map are exclusive: the map replaces the vegetation plate; switching either on switches the other off
 const setTog=(id,key,v)=>{ state[key]=v; $(id).setAttribute('aria-pressed',v); };
-tog('trees','trees',()=>{ if(state.trees && state.geo){ setTog('geoT','geo',false); heavy(()=>{ rebuild(); legend(); }); } else S.canopyMesh.visible=state.trees; });
+tog('trees','trees',()=>{ if(state.trees && state.geo){ setTog('geoT','geo',false); heavy(()=>{ rebuild(); legend(); }); } else { S.canopyMesh.visible=state.trees; requestRender(true); } });
 tog('fireT','fire',()=>heavy(async()=>{ if(state.fire){ try{ await loadFire(); }catch(e){ console.warn(e); state.fire=false; $('fireT').setAttribute('aria-pressed',false); } } rebuild(); legend(); modeUI(); }));
 tog('bldgT','bldg',()=>heavy(()=>{rebuild(); legend();}));
 tog('geoT','geo',()=>{ setTog('trees','trees',!state.geo); heavy(()=>{ rebuild(); legend(); }); });
@@ -955,7 +963,7 @@ async function openScene(id){
 
 // Shift the projection centre to the middle of the area not covered by the control panel.
 const VIEWPORT={tx:1,ty:1};
-function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.fov = w<720?44:32;
+function resize(){ requestRender(); const w=innerWidth,h=innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.fov = w<720?44:32;
   const pr=panel.classList.contains('collapsed')?null:panel.getBoundingClientRect(); let fw=w, fh=h;
   if(pr && pr.width>0){ if(pr.left>w/2) fw=Math.max(w*0.4, pr.left-8); else if(pr.top>h/2) fh=Math.max(h*0.4, pr.top-8); }
   const sx=(w-fw)/2, sy=(h-fh)/2;
@@ -967,12 +975,15 @@ const needle=document.getElementById('needle');
 function loop(now){
   if(tween){ const u=Math.min(1,(now-tween.t0)/tween.dur), e=u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2;
     camera.position.lerpVectors(tween.from.p,tween.to.p,e); controls.target.lerpVectors(tween.from.t,tween.to.t,e); if(u>=1) tween=null; }
-  if(DROP) dropTick(now);
-  controls.update(); renderer.render(scene,camera); if(S) updateLabels();
-  const az=Math.atan2(camera.position.x-controls.target.x, camera.position.z-controls.target.z);
-  needle.style.transform=`rotate(${az*180/Math.PI}deg)`;
+  let moving = !!tween;
+  if(DROP){ dropTick(now); moving=true; }
+  if(controls.update()) moving=true;            // true while the camera moves, including damping
+  if(moving || dirty){                          // otherwise nothing changed: skip the frame
+    dirty=false; renderer.render(scene,camera); if(S) updateLabels();
+    const az=Math.atan2(camera.position.x-controls.target.x, camera.position.z-controls.target.z);
+    needle.style.transform=`rotate(${az*180/Math.PI}deg)`; }
   requestAnimationFrame(loop); }
-if(new URLSearchParams(location.search).has('debug')) window.__tb={time:()=>{ const t=performance.now(); rebuild(); return Math.round(performance.now()-t); }, state, pick:(x,y)=>pickCell({clientX:x,clientY:y}), release:releaseDrop, get S(){return S;}, get NX(){return NX;}};
+if(new URLSearchParams(location.search).has('debug')) window.__tb={get frames(){ return renderer.info.render.frame; }, time:()=>{ const t=performance.now(); rebuild(); return Math.round(performance.now()-t); }, state, pick:(x,y)=>pickCell({clientX:x,clientY:y}), release:releaseDrop, get S(){return S;}, get NX(){return NX;}};
 async function availability(){
   if(Object.keys(DATA).length){ AVAIL=new Set(Object.keys(DATA)); }
   else { try{ const idx=await fetchJSON('data/index.json'); AVAIL=new Set(Object.keys(idx)); }catch(e){ AVAIL=new Set(SCENES.map(s=>s.id)); } }
