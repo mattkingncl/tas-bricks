@@ -1039,21 +1039,20 @@ function stackHTML(i,c,r,tapped){
   // runs of consecutive parts with the same meaning
   const runs=[]; for(const q of parts){ const m=meaning(q), last=runs[runs.length-1];
     if(last && last.m===m) last.q.push(q); else runs.push({m,q:[q]}); }
-  // drawing: one stud wide, true plate heights, scaled to fit
-  const plates=H+(can?1:0), ph=Math.max(1.2,Math.min(6,150/plates)), w=30, top=(can?ph+4:3)+2, hgt=top+H*ph+2;
-  let svg=''; const hexs=v=>'#'+v.toString(16).padStart(6,'0');
-  for(const q of parts){ const y=top+(H-q.z-KIND[q.k].h)*ph, hh=KIND[q.k].h*ph;
-    svg+=`<rect x="6" y="${y.toFixed(1)}" width="${w}" height="${Math.max(0.8,hh-0.3).toFixed(1)}" fill="${hexs(COL[q.c].hex)}" stroke="${q===tapped?'#e4231a':'rgba(0,0,0,.35)'}" stroke-width="${q===tapped?2:0.5}"/>`; }
-  const topPart=parts[0];
-  if(can) svg+=`<rect x="${6+w*0.2}" y="${(top-ph).toFixed(1)}" width="${w*0.6}" height="${ph.toFixed(1)}" rx="2" fill="${hexs(COL[can.c].hex)}" stroke="rgba(0,0,0,.35)" stroke-width="0.5"/>`+
-                    `<rect x="${6+w*0.35}" y="${(top-ph-3).toFixed(1)}" width="${w*0.3}" height="3" fill="${hexs(COL[can.c].hex)}"/>`;
-  else if(topPart.k!=='T') svg+=`<rect x="${6+w*0.3}" y="${top-3}" width="${w*0.4}" height="3" fill="${hexs(COL[topPart.c].hex)}" stroke="rgba(0,0,0,.35)" stroke-width="0.5"/>`;
-  const list=(can?[`<li><span class="sw" style="background:${hexs(COL[can.c].hex)}"></span>Canopy · Plate, Round 1×1 (4073) ${COL[can.c].n}</li>`]:[]).concat(runs.map(({m,q})=>{
-    const n=q.reduce((t,x)=>t+KIND[x.k].h,0), kinds=[...new Set(q.map(x=>`${KIND[x.k].name.toLowerCase()} ${Math.min(x.w,x.d)}×${Math.max(x.w,x.d)}`))];
-    const sel=q.includes(tapped)?' class="sel"':'';
-    return `<li${sel}><span class="sw" style="background:${hexs(COL[q[0].c].hex)}"></span>${m} <span class="n">${n} plate${n>1?'s':''} · ${q.length>1?q.length+' parts':kinds[0]}</span></li>`; }));
-  const tp=tapped?`<div class="n">Tapped: ${KIND[tapped.k].name} ${Math.min(tapped.w,tapped.d)}×${Math.max(tapped.w,tapped.d)} (${IDS[tapped.k][Math.min(tapped.w,tapped.d)+'x'+Math.max(tapped.w,tapped.d)]}), ${COL[tapped.c].n}, layer ${tapped.z+1}</div>`:'';
-  return `<div class="stack"><svg width="42" height="${hgt.toFixed(0)}" viewBox="0 0 42 ${hgt.toFixed(1)}" role="img" aria-label="Column of parts">${svg}</svg><div><ul>${list.join('')}</ul>${tp}</div></div>`; }
+  // keep the surface: one piece from each run, from the top down to (and including) the first rock layer
+  const sel=[]; for(const run of runs){ sel.push({m:run.m, q:run.q[0], tappedIn:run.q.includes(tapped)}); if(/^Rock|^Soil|^Base|^Sea floor/.test(run.m)) break; }
+  if(can) sel.unshift({m:'Canopy', q:{k:'R',c:can.c,w:1,d:1}, can:true});
+  // drawing: the selected pieces stacked one on another, one stud wide, at their plate heights
+  const ph=8, w=30, hexs=v=>'#'+v.toString(16).padStart(6,'0'), hOf=x=>x.can?1.5:KIND[x.q.k].h;
+  const total=sel.reduce((t,x)=>t+hOf(x),0), hgt=total*ph+8; let y=6, svg='';
+  for(const x of sel){ const hh=hOf(x)*ph, col=hexs(COL[x.q.c].hex), out=x.tappedIn?'#e4231a':'rgba(0,0,0,.35)', sw=x.tappedIn?2:0.6;
+    if(x.can) svg+=`<rect x="${6+w*0.2}" y="${y}" width="${w*0.6}" height="${hh-0.5}" rx="3" fill="${col}" stroke="${out}" stroke-width="${sw}"/>`;
+    else svg+=`<rect x="6" y="${y}" width="${w}" height="${hh-0.5}" fill="${col}" stroke="${out}" stroke-width="${sw}"/>`;
+    if(x===sel[0] && !x.can && x.q.k!=='T') svg=`<rect x="${6+w*0.3}" y="${y-3}" width="${w*0.4}" height="3" fill="${col}" stroke="rgba(0,0,0,.35)" stroke-width="0.5"/>`+svg;
+    y+=hh; }
+  const name=x=>x.can?'Plate, Round 1×1 (4073)':`${KIND[x.q.k].name} ${Math.min(x.q.w,x.q.d)}×${Math.max(x.q.w,x.q.d)} (${IDS[x.q.k][Math.min(x.q.w,x.q.d)+'x'+Math.max(x.q.w,x.q.d)]})`;
+  const list=sel.map(x=>`<li${x.tappedIn?' class="sel"':''}><span class="sw" style="background:${hexs(COL[x.q.c].hex)}"></span>${x.m} <span class="n">${name(x)}, ${COL[x.q.c].n}</span></li>`);
+  return `<div class="stack"><svg width="42" height="${hgt}" viewBox="0 0 42 ${hgt}" role="img" aria-label="Surface bricks">${svg}</svg><ul>${list.join('')}</ul></div>`; }
 function hideInfo(){ $('info').hidden=true; if(S&&S.pin){ model.remove(S.pin); S.pin=null; } requestRender(); }
 document.getElementById('infoX').addEventListener('click',hideInfo);
 addEventListener('keydown',e=>{ if(e.key==='Escape') hideInfo(); });
