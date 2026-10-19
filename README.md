@@ -96,3 +96,10 @@ three.js r160 — MIT licence (lib/three/LICENSE).
   pieces are split into `TILE`-stud tiles. A tile where a stud spans at least `LOD_PX` pixels is drawn with rounded
   bricks; farther tiles use plain boxes and 6-sided studs. Tiles off screen are not drawn. Hero views, triangles per frame:
   Hobart 25 m 126 M -> 13 M; Cradle 25 m 22 M -> 1.5 M; zooming in brings full detail back near the camera.
+
+## Tap a brick
+In Landscape mode a quick tap (not a drag) on the model opens a card: nearest named place, block height and range,
+surface class, rock at the surface or at the tapped depth (walls and build-step cut faces), last recorded fire,
+modelled ice-age ice thickness or sea-floor depth, and under "More" the unit description, the LEGO part, and the
+position (lat/long from MGA55 by the Krüger series, checked against PROJ to 1e-8 degrees). In Water drop mode a tap
+releases a drop instead.
