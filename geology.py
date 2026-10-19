@@ -203,6 +203,64 @@ def fetch_units(meta, session, log):
     return su.reshape(H, W), units
 
 
+# ---------------------------------------------------------------- statewide (1 km) scene
+# One unit per age group (the classify() colour), so the legend stays readable at state scale.
+GROUPS = {'tan': ('Q', 'Quaternary cover', 'cover'), 'blorange': ('T', 'Cenozoic sediments', 'layer'),
+          'dkbrown': ('Tb', 'Cenozoic basalt', 'layer'), 'dbg': ('Jd', 'Jurassic dolerite', 'layer'),
+          'nougat': ('R', 'Triassic sandstone and mudstone', 'layer'), 'sandblue': ('P', 'Permian marine and glaciomarine rocks', 'layer'),
+          'dktan': ('Pg', 'Permian glacial conglomerate', 'layer'), 'pink': ('Dg', 'Devonian granite', 'basement'),
+          'olive': ('S-D', 'Silurian-Devonian rocks', 'basement'), 'mdblue': ('O', 'Ordovician rocks', 'basement'),
+          'sandgreen': ('Cm', 'Cambrian rocks', 'basement'), 'white': ('Ptq', 'Precambrian quartzite', 'basement'),
+          'lavender': ('Pt', 'Precambrian phyllite and schist', 'basement'), 'lbg': ('?', 'Other / unclassified', 'unknown')}
+
+
+def statewide(sc, session, log, tq=10.0, G=250):
+    """Surface geology for the statewide scene from the 1:250 000 map, with the surface rock extended straight down.
+
+    Polygons (theLIST GeologicalAndSoils layer 16) are rasterised at G m, even-odd over all rings, then each native
+    cell (sc['r'] m) takes the majority age group of its G-m cells when >= half are mapped. The 2.5D layer-cake model
+    is not used at this scale (layers are faulted and tilted across the state): walls show the surface rock, with
+    Quaternary cover as a tq-m veneer over the nearest older rock.
+    """
+    from precut import query
+    from rasterio.features import rasterize
+    from affine import Affine
+    from scipy.ndimage import distance_transform_edt
+    E0, N1, R = sc['E0'], sc['N1'], sc['r']; W, H = sc['nx'] * R // G, sc['ny'] * R // G
+    feats = query("Public/GeologicalAndSoils/MapServer/16", "1=1", f"{E0},{N1 - H * G},{E0 + W * G},{N1}",
+                  "SYMBOL,DESCRIPT,MINAGE,MAXAGE", session)
+    log(f"geology 250k statewide: {len(feats)} polygons")
+    keys = list(GROUPS); gid = np.zeros((H, W), np.uint8)
+    for q in feats:
+        a = q['attributes']; rings = (q.get('geometry') or {}).get('rings') or []
+        if not rings: continue
+        cls, col = classify(a.get('SYMBOL'), a.get('DESCRIPT'), a.get('MINAGE'), a.get('MAXAGE'))
+        xs = [p[0] for r in rings for p in r]; ys = [p[1] for r in rings for p in r]
+        c0 = max(0, int((min(xs) - E0) // G)); c1 = min(W, int((max(xs) - E0) // G) + 1)
+        r0 = max(0, int((N1 - max(ys)) // G)); r1 = min(H, int((N1 - min(ys)) // G) + 1)
+        if c1 <= c0 or r1 <= r0: continue
+        tr = Affine(G, 0, E0 + c0 * G, 0, -G, N1 - r0 * G); m = np.zeros((r1 - r0, c1 - c0), bool)
+        for ring in rings:           # even-odd: holes and multi-part polygons both handled by XOR of rings
+            m ^= rasterize([({'type': 'Polygon', 'coordinates': [ring]}, 1)], out_shape=m.shape, transform=tr,
+                           fill=0, dtype='uint8').astype(bool)
+        gid[r0:r1, c0:c1][m] = keys.index(col) + 1
+    f = R // G; h, w = H // f, W // f
+    blk = gid.reshape(h, f, w, f).transpose(0, 2, 1, 3).reshape(h, w, f * f)
+    cnt = np.stack([(blk == k).sum(axis=2) for k in range(len(keys) + 1)], axis=2); cnt[..., 0] = 0
+    best = cnt.argmax(axis=2)                                   # majority age group among mapped 250 m cells
+    su = np.where(cnt.max(axis=2) * 2 >= f * f, best, 0).astype(np.uint8)   # kept when it covers >= half the cell
+    units = [dict(sym=GROUPS[k][0], desc=GROUPS[k][1], cls=GROUPS[k][2], col=k, minage=i, maxage=i) for i, k in enumerate(keys)]
+    cover = np.isin(su, [i + 1 for i, k in enumerate(keys) if GROUPS[k][2] == 'cover']) | (su == 0)
+    bu = su.copy()
+    if (~cover).any():               # under cover (and unmapped cells) take the nearest mapped older rock
+        _, (iy, ix) = distance_transform_edt(cover, return_indices=True); bu = su[iy, ix]
+    bu[su == 0] = 0
+    log(f"statewide geology: {int((su > 0).sum())} mapped cells of {h * w}; groups " +
+        ", ".join(f"{GROUPS[k][0]} {int((su == i + 1).sum())}" for i, k in enumerate(keys) if (su == i + 1).any()))
+    return dict(units=units, layers=[], su=pack_u8(su), bu=pack_u8(bu), bs='', gs=float(R), gnx=w, gny=h, tq=tq,
+                src='MRT 1:250k geology via LIST (statewide, age groups), ' + time.strftime('%Y-%m-%d'))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--dem', required=True); ap.add_argument('--meta', required=True); ap.add_argument('--out', required=True)
@@ -213,7 +271,16 @@ def main():
     meta = json.load(open(a.meta)); s = requests.Session(); s.headers['User-Agent'] = 'tas-bricks-geology/1.0'
     log = lambda m: print(m, flush=True)
     with rasterio.open(a.dem) as ds:
-        for sid in [x for x in (a.only.split(',') if a.only else meta.keys()) if x]:
+        for sid in [x for x in (a.only.split(',') if a.only else list(meta.keys()) + ['tasmania']) if x]:
+            if sid == 'tasmania':          # statewide 1 km scene: surface map only, built by statewide()
+                sfn = os.path.join(a.out, 'tasmania.json')
+                if not os.path.exists(sfn): log('tasmania: no scene file (run statewide.py first)'); continue
+                try: out = statewide(json.load(open(sfn)), s, log, a.tq)
+                except Exception as e: log(f"tasmania: FAILED {e!r}"); continue
+                fn = os.path.join(a.out, 'tasmania_geo.json'); json.dump(out, open(fn, 'w'), separators=(',', ':'))
+                d = json.load(open(sfn)); d['geo'] = 1
+                json.dump(d, open(sfn + '.tmp', 'w'), separators=(',', ':')); os.replace(sfn + '.tmp', sfn)
+                log(f"tasmania: wrote {fn} ({os.path.getsize(fn) / 1e3:.0f} kB)"); continue
             m = meta[sid]
             if m.get('r', 25) != 25: continue
             try:

@@ -137,6 +137,10 @@ def main():
                outlets=[[nm, *X(la, lo)] for nm, la, lo in OUTLETS], z=pack(Zi, L1, U))
     out["_check"] = dict(hm=rolling(Zi), hl=rolling(L1), zmax=int(Zi.max()), zmin=int(Zi.min()), built=time.strftime("%Y-%m-%dT%H:%M:%S%z"))
     fn = os.path.join(a.out, "tasmania.json")
+    if os.path.exists(fn):          # keep flags of layers built later (geology.py, glacial.py) when their files exist
+        old_d = json.load(open(fn))
+        for k in ("geo", "ice"):
+            if old_d.get(k) and os.path.exists(os.path.join(a.out, f"tasmania_{k}.json")): out[k] = 1
     json.dump(out, open(fn + ".tmp", "w"), separators=(",", ":")); os.replace(fn + ".tmp", fn)
     idx = os.path.join(a.out, "index.json"); old = json.load(open(idx)) if os.path.exists(idx) else {}
     old["tasmania"] = dict(bytes=os.path.getsize(fn), **out["_check"]); json.dump(old, open(idx, "w"), indent=1)

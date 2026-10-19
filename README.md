@@ -55,6 +55,11 @@ scene's data/<id>.json carries the flag (`geo`, `bathy`, `ice`, `fire`), and fal
   layered units (Tertiary, Jurassic dolerite, Triassic, Permian) fitted to the DEM height of mapped contacts
   (plane <= 3 deg + Gaussian residual, 600 m) at 100 m, forced to agree with the map in every model cell;
   older basement extruded from the nearest outcrop; Quaternary cover a 10 m veneer; no faults.
+* **Statewide geology** (All of Tasmania): geology.py also builds data/tasmania_geo.json from the 1:250k map (layer 16),
+  one unit per age group, majority per 1 km cell; walls show the surface rock extended down (no layer-cake model at
+  state scale). `./geology.py --dem ... --meta scenes_meta.json --out /srv/www/data --only tasmania`.
+* **Palaeo labels** (All of Tasmania, `paleo` in SCENES): Bassian Plain, Bass Basin, Furneaux and King Island land
+  bridges, shown only when the sea is lowered by 45 m or more (`PALEO_SL`).
 * **Sea floor**: bilinear to 25 m, clipped to [-150, -1] m. `precut.py --bathy /srv/data/bathy/tas_bathy_mga.tif`
   keeps it on a re-cut (otherwise re-run `./run_all.sh bathy`); a re-cut keeps the `geo`/`ice`/`fire` flags when
   their files exist. The scripts only read scenes_meta.json (the scene list), so the repo stays clean. The sea-level slider then runs -120...+70 m;
