@@ -102,6 +102,8 @@ td.id{font-family:var(--mono);color:var(--ink2)}
 .info .sub{font-family:var(--mono);font-size:11px;color:var(--ink2);margin-bottom:6px}
 .info dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:0}
 .info dt{color:var(--ink2)} .info dd{margin:0}
+.info .brick{display:flex;gap:10px;align-items:center;margin:2px 0 8px;font-size:12px;line-height:1.35}
+.info .brick svg{flex:none}
 .info details{margin-top:6px} .info summary{cursor:pointer;color:var(--ink2);font-size:12px}
 .info .x{all:unset;cursor:pointer;position:absolute;right:8px;top:4px;font-size:20px;line-height:1;color:var(--ink2);padding:2px 4px}
 .info .x:focus-visible{outline:2px solid var(--focus)}
@@ -994,6 +996,23 @@ function rockAt(i,e,surface){   // geology unit (1-based) at elevation e in cell
   if(u && GEO.cls[u]==='cover' && e > H_M[i]-GEO.g.tq) return u;
   for(let k=0;k<K;k++) if(e >= GB[i*K+k]){ const ids=GEO.g.layers[k]; return ids.includes(u)?u:ids[0]; }
   return GBU[i]||0; }
+// Isometric drawing of a part (SVG): a x b studs, brick (3 plates), plate (1) or tile (1, no studs), in its colour
+function brickSVG(k,a,b,hex){
+  const X=a*PITCH, Y=b*PITCH, Z=KIND[k].h*PLATE, c30=Math.cos(Math.PI/6), s30=0.5;
+  const P=(x,y,z)=>[(x-y)*c30, (x+y)*s30-z];
+  const pts=[[0,0,0],[X,0,0],[X,Y,0],[0,Y,0],[0,0,Z+STUD_H],[X,0,Z+STUD_H],[X,Y,Z+STUD_H],[0,Y,Z+STUD_H]].map(q=>P(...q));
+  const x0=Math.min(...pts.map(q=>q[0])), x1=Math.max(...pts.map(q=>q[0])), y0=Math.min(...pts.map(q=>q[1])), y1=Math.max(...pts.map(q=>q[1]));
+  const sc=Math.min(84/(x1-x0), 60/(y1-y0)), tf=([x,y])=>`${((x-x0)*sc+4).toFixed(1)},${((y-y0)*sc+4).toFixed(1)}`;
+  const shade=(m)=>{ const r=(hex>>16)&255, g=(hex>>8)&255, bl=hex&255; return `rgb(${Math.round(r*m)},${Math.round(g*m)},${Math.round(bl*m)})`; };
+  const poly=(q,m)=>`<polygon points="${q.map(v=>tf(P(...v))).join(' ')}" fill="${shade(m)}" stroke="rgba(0,0,0,.35)" stroke-width="0.6"/>`;
+  let svg=poly([[0,0,Z],[X,0,Z],[X,Y,Z],[0,Y,Z]],1)+poly([[0,Y,0],[X,Y,0],[X,Y,Z],[0,Y,Z]],0.72)+poly([[X,0,0],[X,Y,0],[X,Y,Z],[X,0,Z]],0.56);
+  if(k!=='T'){ const rx=2.4*c30*Math.SQRT2*sc, ry=2.4*s30*Math.SQRT2*sc, studs=[];
+    for(let i=0;i<a;i++)for(let j=0;j<b;j++) studs.push([(i+.5)*PITCH,(j+.5)*PITCH]);
+    studs.sort((u,w)=>(u[0]+u[1])-(w[0]+w[1]));   // back to front
+    for(const [x,y] of studs){ const [bx,by]=tf(P(x,y,Z)).split(',').map(Number), [tx,ty]=tf(P(x,y,Z+STUD_H)).split(',').map(Number);
+      svg+=`<path d="M${bx-rx},${by} L${tx-rx},${ty} A${rx},${ry} 0 0 0 ${tx+rx},${ty} L${bx+rx},${by} A${rx},${ry} 0 0 1 ${bx-rx},${by}Z" fill="${shade(0.68)}" stroke="rgba(0,0,0,.35)" stroke-width="0.5"/>`+
+           `<ellipse cx="${tx}" cy="${ty}" rx="${rx}" ry="${ry}" fill="${shade(1.08)}" stroke="rgba(0,0,0,.3)" stroke-width="0.5"/>`; } }
+  return `<svg width="92" height="68" viewBox="0 0 92 68" role="img" aria-label="${KIND[k].name} ${a} by ${b}">${svg}</svg>`; }
 function hideInfo(){ $('info').hidden=true; if(S&&S.pin){ model.remove(S.pin); S.pin=null; } requestRender(); }
 document.getElementById('infoX').addEventListener('click',hideInfo);
 addEventListener('keydown',e=>{ if(e.key==='Escape') hideInfo(); });
@@ -1032,11 +1051,13 @@ async function showInfo(ev){
   if(k===SEA && BATHY) rows.push(['Ice age', H_M[i] > LGM_SL ? 'dry land when the sea was 120 m lower' : 'still under water at −120 m']);
   // the brick itself
   const p=S.parts.find(p=>c>=p.x&&c<p.x+p.w&&r>=p.y&&r<p.y+p.d&&zp>=p.z&&zp<p.z+KIND[p.k].h);
-  if(p){ const a=Math.min(p.w,p.d), b=Math.max(p.w,p.d); more.push(['Brick', `${KIND[p.k].name} ${a}×${b} (${IDS[p.k][a+'x'+b]}), ${COL[p.c].n}, layer ${zp+1} of ${S.maxH}`]); }
+  let brickHTML='';
+  if(p){ const a=Math.min(p.w,p.d), b=Math.max(p.w,p.d);
+    brickHTML=`<div class="brick">${brickSVG(p.k,a,b,COL[p.c].hex)}<div><b>${KIND[p.k].name} ${a}×${b}</b><br>part ${IDS[p.k][a+'x'+b]} · ${COL[p.c].n}<br>layer ${zp+1} of ${S.maxH}</div></div>`; }
   more.push(['Position', `${fmtDeg(lat,'N','S')} ${fmtDeg(lon,'E','W')} · MGA55 ${fmt(Math.round(E))} E ${fmt(Math.round(Nn))} N`]);
   if(SLOPE[i]>0 && !k) more.push(['Slope', `${Math.round(SLOPE[i])}° (over ${CELL} m)`]);
   const dl=a=>a.map(([t,v])=>`<dt>${t}</dt><dd>${v}</dd>`).join('');
-  $('infoBody').innerHTML=`<h3>${where}</h3><div class="sub">${CELL} m block · ${sliced&&top?'cut face':top?'top':'side wall'}</div><dl>${dl(rows)}</dl>`+
+  $('infoBody').innerHTML=`<h3>${where}</h3><div class="sub">${CELL} m block · ${sliced&&top?'cut face':top?'top':'side wall'}</div>${brickHTML}<dl>${dl(rows)}</dl>`+
     (more.length?`<details><summary>More</summary><dl>${dl(more)}</dl></details>`:'');
   // place the card beside the tap (bottom sheet on phones, via CSS) and drop a pin on the brick
   const box=$('info'); box.hidden=false; const bw=box.offsetWidth, bh=box.offsetHeight;
