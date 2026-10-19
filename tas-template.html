@@ -563,12 +563,13 @@ function build(o){
         parts.push({k,w,d,x,y,z,c,vis}); break; } }
     for(const i of cells){ buf[i]=-1; used[i]=0; }
   }
-  const studsTop=[], studsCut=[];
+  // Studs on the finished surface. Studs on a part-built model (the build-step cut) are placed per step in applyStep.
+  const studsTop=[];
   for(const p of parts){ if(p.k==='T') continue; const t=p.z+KIND[p.k].h;
     for(let yy=p.y;yy<p.y+p.d;yy++)for(let xx=p.x;xx<p.x+p.w;xx++){const j=yy*NX+xx;
-      if(t===H[j]) studsTop.push({x:xx,y:yy,t,c:p.c}); else if(!SHELL) studsCut.push({x:xx,y:yy,t,c:p.c});}}
+      if(t===H[j]) studsTop.push({x:xx,y:yy,t,c:p.c});}}
   const canopy=[]; if(!GM) for(let i=0;i<N;i++) if(FOREST[i] && !BP[i] && !WET[i] && !IP[i] && !snowTop[i] && NZ5[i]>0.5) canopy.push({x:i%NX,y:(i/NX)|0,t:H[i],c:(NZ5[i]>0.8?C.green:C.dkgreen)});
-  return {H,maxH,parts,studsTop,studsCut,canopy,mPerPlate,SHELL,hiddenEst:Math.round(hiddenPlates/24),WET,IP,ISKIN,FC,slr,snowTop};
+  return {H,maxH,parts,studsTop,canopy,mPerPlate,SHELL,hiddenEst:Math.round(hiddenPlates/24),WET,IP,ISKIN,FC,slr,snowTop};
 }
 
 /* ================= RENDERER ================= */
@@ -690,8 +691,16 @@ function rebuild(){
   hidden.sort((a,b)=>a.z-b.z);
   S.interior=inst(unitBox,plastic,hidden,(p,M)=>M.compose(v.set((p.x+p.w/2)*PITCH,p.z*PLATE,(p.y+p.d/2)*PITCH),q0,new THREE.Vector3(p.w*PITCH-2*GAP,KIND[p.k].h*PLATE-0.04,p.d*PITCH-2*GAP)));
   S.interior.count=0; model.add(S.interior);
-  S.cutMesh=new THREE.InstancedMesh(studGeo,plastic,Math.max(1,NX*NY)); S.cutMesh.count=0; S.cutMesh.castShadow=true; model.add(S.cutMesh);
-  S.byT={}; for(const s of S.studsCut)(S.byT[s.t]||(S.byT[s.t]=[])).push(s);
+  // Studs on the build-step cut: at most one per cell, so the mesh never needs more than NX*NY instances
+  S.cutMesh=new THREE.InstancedMesh(S.SHELL?studGeoLo:studGeo,plastic,Math.max(1,NX*NY)); S.cutMesh.count=0; S.cutMesh.castShadow=true; model.add(S.cutMesh);
+  // Index of the studded parts that span each layer (a brick spans 3 layers, a plate 1), in compact typed arrays:
+  // the parts spanning layer z are S.atLayer[S.layerStart[z] .. S.layerStart[z+1]-1] (indices into S.parts).
+  { const P=S.parts, L=S.maxH+1, cnt=new Int32Array(L+1);
+    for(const p of P){ if(p.k==='T') continue; for(let z=p.z;z<p.z+KIND[p.k].h&&z<L;z++) cnt[z+1]++; }
+    for(let z=0;z<L;z++) cnt[z+1]+=cnt[z];
+    const at=new Int32Array(cnt[L]), fill=cnt.slice(0,L);
+    P.forEach((p,n)=>{ if(p.k==='T') return; for(let z=p.z;z<p.z+KIND[p.k].h&&z<L;z++) at[fill[z]++]=n; });
+    S.layerStart=cnt; S.atLayer=at; }
   S.shed=[]; S.shedH=0;
   S.extraParts=[{k:'Plate, Round 1x1',id:'4073',c:C.dkgreen,n:S.canopy.filter(s=>s.c===C.dkgreen).length},{k:'Plate, Round 1x1',id:'4073',c:C.green,n:S.canopy.filter(s=>s.c===C.green).length}];
   if(SC.extra==='boatshed'){ const bs=boatshedCell(); if(bs && !S.IP[bs.y*NX+bs.x] && !S.ISKIN[bs.y*NX+bs.x]){ const bsH=S.H[bs.y*NX+bs.x];
@@ -832,9 +841,15 @@ function applyStep(k){
   for(const m of S.studMeshes) m.count=upperBound(m.userData.z,k);
   for(const m of S.canopyMeshes) m.count= full? m.userData.z.length : 0;
   S.interior.count= full? 0 : upperBound(S.interior.userData.z,k);
-  const cut = full? [] : (S.byT[k+1]||[]);
-  cut.forEach((s,i)=>{tmpM.makeTranslation((s.x+.5)*PITCH,s.t*PLATE,(s.y+.5)*PITCH); S.cutMesh.setMatrixAt(i,tmpM); S.cutMesh.setColorAt(i,colour(s.c));});
-  S.cutMesh.count=cut.length; S.cutMesh.instanceMatrix.needsUpdate=true; if(S.cutMesh.instanceColor) S.cutMesh.instanceColor.needsUpdate=true;
+  // Studs on the cut: every studded part that spans layer k is the top drawn piece of its column. Wherever the
+  // finished column continues above it, put a stud on each of its cells (where it is the finished top, the
+  // surface studs are already shown).
+  let nCut=0;
+  if(!full){ const P=S.parts, H=S.H;
+    for(let a=S.layerStart[k], b=S.layerStart[k+1]; a<b; a++){ const p=P[S.atLayer[a]], t=p.z+KIND[p.k].h; colour(p.c);
+      for(let yy=p.y;yy<p.y+p.d;yy++)for(let xx=p.x;xx<p.x+p.w;xx++){ if(t>=H[yy*NX+xx]) continue;
+        tmpM.makeTranslation((xx+.5)*PITCH,t*PLATE,(yy+.5)*PITCH); S.cutMesh.setMatrixAt(nCut,tmpM); S.cutMesh.setColorAt(nCut,tmpC); nCut++; } } }
+  S.cutMesh.count=nCut; S.cutMesh.instanceMatrix.needsUpdate=true; if(S.cutMesh.instanceColor) S.cutMesh.instanceColor.needsUpdate=true;
   S.shed.forEach(o=>o.visible=k>=S.shedH);
   for(const o of [S.trail,S.dropMesh,S.basin,S.fireMesh,...(S.tubes||[])]) if(o) o.visible=full;
   document.getElementById('stepOut').textContent = full? 'complete' : `layer ${k+1} of ${stepMax+1} · ${(Z0+(k+1-BASE)*S.mPerPlate).toFixed(0)} m`;
