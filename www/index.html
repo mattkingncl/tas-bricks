@@ -102,8 +102,13 @@ td.id{font-family:var(--mono);color:var(--ink2)}
 .info .sub{font-family:var(--mono);font-size:11px;color:var(--ink2);margin-bottom:6px}
 .info dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:0}
 .info dt{color:var(--ink2)} .info dd{margin:0}
-.info .brick{display:flex;gap:10px;align-items:center;margin:2px 0 8px;font-size:12px;line-height:1.35}
-.info .brick svg{flex:none}
+.info .stack{display:flex;gap:8px;align-items:flex-start;margin:2px 0 8px;font-size:11.5px;line-height:1.35}
+.info .stack svg{flex:none}
+.info .stack ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.info .stack li{display:flex;gap:5px;align-items:baseline;flex-wrap:wrap}
+.info .stack li .sw{width:9px;height:9px;transform:translateY(1px)}
+.info .stack li.sel{font-weight:600}
+.info .stack .n{color:var(--ink2);font-weight:400}
 .info details{margin-top:6px} .info summary{cursor:pointer;color:var(--ink2);font-size:12px}
 .info .x{all:unset;cursor:pointer;position:absolute;right:8px;top:4px;font-size:20px;line-height:1;color:var(--ink2);padding:2px 4px}
 .info .x:focus-visible{outline:2px solid var(--focus)}
@@ -563,7 +568,7 @@ function build(o){
     for(let yy=p.y;yy<p.y+p.d;yy++)for(let xx=p.x;xx<p.x+p.w;xx++){const j=yy*NX+xx;
       if(t===H[j]) studsTop.push({x:xx,y:yy,t,c:p.c}); else if(!SHELL) studsCut.push({x:xx,y:yy,t,c:p.c});}}
   const canopy=[]; if(!GM) for(let i=0;i<N;i++) if(FOREST[i] && !BP[i] && !WET[i] && !IP[i] && !snowTop[i] && NZ5[i]>0.5) canopy.push({x:i%NX,y:(i/NX)|0,t:H[i],c:(NZ5[i]>0.8?C.green:C.dkgreen)});
-  return {H,maxH,parts,studsTop,studsCut,canopy,mPerPlate,SHELL,hiddenEst:Math.round(hiddenPlates/24),WET,IP,ISKIN,FC,slr};
+  return {H,maxH,parts,studsTop,studsCut,canopy,mPerPlate,SHELL,hiddenEst:Math.round(hiddenPlates/24),WET,IP,ISKIN,FC,slr,snowTop};
 }
 
 /* ================= RENDERER ================= */
@@ -1013,6 +1018,42 @@ function brickSVG(k,a,b,hex){
       svg+=`<path d="M${bx-rx},${by} L${tx-rx},${ty} A${rx},${ry} 0 0 0 ${tx+rx},${ty} L${bx+rx},${by} A${rx},${ry} 0 0 1 ${bx-rx},${by}Z" fill="${shade(0.68)}" stroke="rgba(0,0,0,.35)" stroke-width="0.5"/>`+
            `<ellipse cx="${tx}" cy="${ty}" rx="${rx}" ry="${ry}" fill="${shade(1.08)}" stroke="rgba(0,0,0,.3)" stroke-width="0.5"/>`; } }
   return `<svg width="92" height="68" viewBox="0 0 92 68" role="img" aria-label="${KIND[k].name} ${a} by ${b}">${svg}</svg>`; }
+// The column of parts under the tapped stud, top to bottom, as a drawn "core" with what each run of parts represents
+function stackHTML(i,c,r,tapped){
+  const parts=S.parts.filter(q=>c>=q.x&&c<q.x+q.w&&r>=q.y&&r<q.y+q.d).sort((u,w)=>w.z-u.z);   // top first
+  if(!parts.length) return '';
+  const can=state.trees ? S.canopy.find(q=>q.x===c&&q.y===r) : null;
+  const H=S.H[i], ip=S.IP[i], wet=S.WET[i];
+  // what a part at plate z represents
+  const meaning=(q)=>{ const z=q.z, e=Z0+(z-BASE+0.5)*S.mPerPlate;
+    if(z<BASE) return 'Base plate';
+    if(ip && z>=H-ip) return 'Glacier ice (last glaciation)';
+    if(q.c===WATER) return LAKE[i]===SEA?'Sea surface':'Lake surface';
+    if(wet && q.c===C.dkblue) return 'Water column';
+    if(LAKE[i]===SEA && q.c===SAND) return 'Sea floor';
+    if(BH[i]>0 && state.bldg && z>=H-ip-Math.max(1,Math.round(BH[i]/S.mPerPlate)) && !wet && !ip) return 'Buildings';
+    if(z===H-1-ip && S.snowTop[i] && q.c===C.white) return 'Spring snow';
+    if(q.c===SURF[i] && z>=H-ip-3) return 'Land cover · '+SCLS_NAME[SCLS[i]];
+    if(geoSub()){ const u=rockAt(i,e,false), U=u?GEO.g.units[u-1]:null; if(U) return `Rock · ${U.sym} ${(ROCKLEG.find(([kk])=>kk===COL[GEO.col[u]].k)||[,''])[1]}`; }
+    return 'Soil and rock'; };
+  // runs of consecutive parts with the same meaning
+  const runs=[]; for(const q of parts){ const m=meaning(q), last=runs[runs.length-1];
+    if(last && last.m===m) last.q.push(q); else runs.push({m,q:[q]}); }
+  // drawing: one stud wide, true plate heights, scaled to fit
+  const plates=H+(can?1:0), ph=Math.max(1.2,Math.min(6,150/plates)), w=30, top=(can?ph+4:3)+2, hgt=top+H*ph+2;
+  let svg=''; const hexs=v=>'#'+v.toString(16).padStart(6,'0');
+  for(const q of parts){ const y=top+(H-q.z-KIND[q.k].h)*ph, hh=KIND[q.k].h*ph;
+    svg+=`<rect x="6" y="${y.toFixed(1)}" width="${w}" height="${Math.max(0.8,hh-0.3).toFixed(1)}" fill="${hexs(COL[q.c].hex)}" stroke="${q===tapped?'#e4231a':'rgba(0,0,0,.35)'}" stroke-width="${q===tapped?2:0.5}"/>`; }
+  const topPart=parts[0];
+  if(can) svg+=`<rect x="${6+w*0.2}" y="${(top-ph).toFixed(1)}" width="${w*0.6}" height="${ph.toFixed(1)}" rx="2" fill="${hexs(COL[can.c].hex)}" stroke="rgba(0,0,0,.35)" stroke-width="0.5"/>`+
+                    `<rect x="${6+w*0.35}" y="${(top-ph-3).toFixed(1)}" width="${w*0.3}" height="3" fill="${hexs(COL[can.c].hex)}"/>`;
+  else if(topPart.k!=='T') svg+=`<rect x="${6+w*0.3}" y="${top-3}" width="${w*0.4}" height="3" fill="${hexs(COL[topPart.c].hex)}" stroke="rgba(0,0,0,.35)" stroke-width="0.5"/>`;
+  const list=(can?[`<li><span class="sw" style="background:${hexs(COL[can.c].hex)}"></span>Canopy · Plate, Round 1×1 (4073) ${COL[can.c].n}</li>`]:[]).concat(runs.map(({m,q})=>{
+    const n=q.reduce((t,x)=>t+KIND[x.k].h,0), kinds=[...new Set(q.map(x=>`${KIND[x.k].name.toLowerCase()} ${Math.min(x.w,x.d)}×${Math.max(x.w,x.d)}`))];
+    const sel=q.includes(tapped)?' class="sel"':'';
+    return `<li${sel}><span class="sw" style="background:${hexs(COL[q[0].c].hex)}"></span>${m} <span class="n">${n} plate${n>1?'s':''} · ${q.length>1?q.length+' parts':kinds[0]}</span></li>`; }));
+  const tp=tapped?`<div class="n">Tapped: ${KIND[tapped.k].name} ${Math.min(tapped.w,tapped.d)}×${Math.max(tapped.w,tapped.d)} (${IDS[tapped.k][Math.min(tapped.w,tapped.d)+'x'+Math.max(tapped.w,tapped.d)]}), ${COL[tapped.c].n}, layer ${tapped.z+1}</div>`:'';
+  return `<div class="stack"><svg width="42" height="${hgt.toFixed(0)}" viewBox="0 0 42 ${hgt.toFixed(1)}" role="img" aria-label="Column of parts">${svg}</svg><div><ul>${list.join('')}</ul>${tp}</div></div>`; }
 function hideInfo(){ $('info').hidden=true; if(S&&S.pin){ model.remove(S.pin); S.pin=null; } requestRender(); }
 document.getElementById('infoX').addEventListener('click',hideInfo);
 addEventListener('keydown',e=>{ if(e.key==='Escape') hideInfo(); });
@@ -1034,12 +1075,13 @@ async function showInfo(ev){
   if(k===SEA) ground = BATHY ? `sea, floor ${fmt(Math.round(-H_M[i]))} m below today’s sea level` : 'sea';
   else if(k) ground = `${(SC.data.lakes||[])[k-1]||'lake'}, water level ${fmt(Math.round(H_M[i]))} m`;
   else ground = `${fmt(Math.round(H_M[i]))} m (block mean; ${fmt(Math.round(lo))}–${fmt(Math.round(hi))} m)`;
-  rows.push(['Height', ground]);
-  if(k!==SEA && !k) rows.push(['Surface', `${SCLS_NAME[SCLS[i]]}${BH[i]>0&&state.bldg?`, buildings ~${Math.round(BH[i])} m`:''}`]);
+  rows.push(['Ground', ground]);
+  if(k!==SEA && !k){ const veg=SCLS_NAME[SCLS[i]], can=S.canopy.some(q=>q.x===c&&q.y===r);
+    rows.push(['Land cover', `${veg}${can&&state.trees?' (with canopy)':''}${S.snowTop[i]?', spring snow':''}${BH[i]>0&&state.bldg?`, buildings ~${Math.round(BH[i])} m`:''}`]); }
   // rock at the tapped depth (or at the surface)
   if(geoSub()){ const u=rockAt(i,e,surface); const U=u?GEO.g.units[u-1]:null;
     if(U){ const grp=(ROCKLEG.find(([kk])=>kk===COL[GEO.col[u]].k)||[,''])[1];
-      rows.push([surface?'Rock at surface':`Rock at ${fmt(Math.round(e))} m`, `<b>${U.sym}</b> ${grp}${U.maxage?` · ${U.minage}–${U.maxage} Ma`:''}`]);
+      rows.push([surface?'Mapped geology':`Rock at ${fmt(Math.round(e))} m`, `<b>${U.sym}</b> ${grp}${U.maxage?` · ${U.minage}–${U.maxage} Ma`:''}`]);
       if(U.desc && U.desc!==grp) more.push(['Unit', U.desc.slice(0,220)]);
       if(!surface && H_M[i]>e) rows.push(['Depth', `${fmt(Math.round(H_M[i]-e))} m below the ground surface`]); } }
   else if(!surface) rows.push(['Depth', `${fmt(Math.round(Math.max(0,H_M[i]-e)))} m below the surface (no geology for this scene)`]);
@@ -1051,9 +1093,7 @@ async function showInfo(ev){
   if(k===SEA && BATHY) rows.push(['Ice age', H_M[i] > LGM_SL ? 'dry land when the sea was 120 m lower' : 'still under water at −120 m']);
   // the brick itself
   const p=S.parts.find(p=>c>=p.x&&c<p.x+p.w&&r>=p.y&&r<p.y+p.d&&zp>=p.z&&zp<p.z+KIND[p.k].h);
-  let brickHTML='';
-  if(p){ const a=Math.min(p.w,p.d), b=Math.max(p.w,p.d);
-    brickHTML=`<div class="brick">${brickSVG(p.k,a,b,COL[p.c].hex)}<div><b>${KIND[p.k].name} ${a}×${b}</b><br>part ${IDS[p.k][a+'x'+b]} · ${COL[p.c].n}<br>layer ${zp+1} of ${S.maxH}</div></div>`; }
+  const brickHTML = stackHTML(i, c, r, p);
   more.push(['Position', `${fmtDeg(lat,'N','S')} ${fmtDeg(lon,'E','W')} · MGA55 ${fmt(Math.round(E))} E ${fmt(Math.round(Nn))} N`]);
   if(SLOPE[i]>0 && !k) more.push(['Slope', `${Math.round(SLOPE[i])}° (over ${CELL} m)`]);
   const dl=a=>a.map(([t,v])=>`<dt>${t}</dt><dd>${v}</dd>`).join('');
