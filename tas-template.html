@@ -213,6 +213,7 @@ html.kiosk .attract[hidden]{display:none}
     <button class="tog" id="fireT" aria-pressed="false" hidden><i></i>Fire history</button>
     <button class="tog" id="bldgT" aria-pressed="true" hidden><i></i>Buildings</button>
     <button class="tog" id="geoT" aria-pressed="false" hidden><i></i>Geology map</button>
+    <button class="tog" id="stereoT" aria-pressed="false" hidden title="Red/cyan anaglyph: wear the 3D glasses, red lens on the left eye"><i></i>3D (red/cyan glasses)</button>
   </div>
   <div class="grp">
     <div class="lbl">Build step <span id="stepOut">complete</span></div>
@@ -622,7 +623,7 @@ let KZ = 1;                                                // current control sc
 // Controls are designed for a ~1600 px wide browser window; scale them with the window so they keep the same
 // share of the screen whether the PC runs the TV at 100 %, 200 % or 300 % display scaling.
 function kioskScale(){ KZ = KIOSK_Z || Math.min(2.5, Math.max(1, innerWidth/1600)); document.documentElement.style.setProperty('--kz', KZ); }
-if(KIOSK){ document.documentElement.classList.add('kiosk'); kioskScale();
+if(KIOSK){ document.documentElement.classList.add('kiosk'); kioskScale(); document.getElementById('stereoT').hidden=false;
   document.getElementById('hint').textContent='One finger to turn · pinch to zoom · two fingers to move · tap a brick'; }
 // a tap is a short touch that hardly moves; fingers on a big screen wobble more than a mouse
 const TAP_PX = KIOSK ? 16 : 6, TAP_MS = KIOSK ? 800 : 600;
@@ -908,11 +909,11 @@ function applyStep(k){
   S.shed.forEach(o=>o.visible=k>=S.shedH);
   for(const o of [S.trail,S.dropMesh,S.basin,S.fireMesh,...(S.tubes||[])]) if(o) o.visible=full;
   document.getElementById('stepOut').textContent = full? 'complete' : `layer ${k+1} of ${stepMax+1} · ${(Z0+(k+1-BASE)*S.mPerPlate).toFixed(0)} m`;
-  document.getElementById('labels').style.visibility = full&&state.labels ? 'visible':'hidden';
+  document.getElementById('labels').style.visibility = full&&state.labels&&!state.stereo ? 'visible':'hidden';   // no 2D labels in 3D
 }
 
 /* ================= UI ================= */
-const state={scene:'cradle',tier:2,res:100,ve:2,snow:false,labels:true,trees:true,bldg:true,geo:false,view:'hero',slr:0,mode:'land',lgm:false,fire:false};
+const state={stereo:false,scene:'cradle',tier:2,res:100,ve:2,snow:false,labels:true,trees:true,bldg:true,geo:false,view:'hero',slr:0,mode:'land',lgm:false,fire:false};
 // Phones and tablets: open at the coarsest resolution (users can still step up)
 const MOBILE = matchMedia("(pointer: coarse)").matches && Math.min(screen.width, screen.height) <= 820;
 if(MOBILE) state.tier=0;
@@ -1243,6 +1244,7 @@ tog('trees','trees',()=>{ if(state.trees && state.geo){ setTog('geoT','geo',fals
 tog('fireT','fire',()=>heavy(async()=>{ if(state.fire){ try{ await loadFire(); }catch(e){ console.warn(e); state.fire=false; $('fireT').setAttribute('aria-pressed',false); } } rebuild(); legend(); modeUI(); }));
 tog('bldgT','bldg',()=>heavy(()=>{rebuild(); legend();}));
 tog('geoT','geo',()=>{ setTog('trees','trees',!state.geo); heavy(()=>{ rebuild(); legend(); }); });
+tog('stereoT','stereo',()=>{ applyStep(+document.getElementById('step').value); requestRender(); });   // 3D on/off (labels follow)
 document.getElementById('step').addEventListener('input',e=>applyStep(+e.target.value));
 const dlg=document.getElementById('dlg');
 document.getElementById('partsBtn').addEventListener('click',()=>dlg.showModal());
@@ -1292,7 +1294,8 @@ let lastInput = performance.now(), attract = false, tourTimer = null, tourAt = 0
 function kioskReset(id){
   hideInfo(); if(dlg.open) dlg.close(); tween=null;
   Object.assign(state,{snow:false,labels:true,trees:true,bldg:true,geo:false,lgm:false,fire:false,mode:'land',slr:0,view:'hero'});
-  for(const [el,k] of [['snow','snow'],['labelsT','labels'],['trees','trees'],['bldgT','bldg']]) setTog(el,k,state[k]);
+  state.stereo=false;                                       // back to 2D: the next visitor may have no glasses
+  for(const [el,k] of [['snow','snow'],['labelsT','labels'],['trees','trees'],['bldgT','bldg'],['stereoT','stereo']]) setTog(el,k,state[k]);
   panel.scrollTop=0;
   state.scene=id; state.loaded=false;                       // loaded=false: open at the scene's own default resolution
   pressGroup(scenesEl, scenesEl.querySelector(`[data-s="${id}"]`));
@@ -1335,6 +1338,64 @@ function resize(){ requestRender(); if(KIOSK) kioskScale(); const w=innerWidth,h
   camera.updateProjectionMatrix();
   const fpx=((h+2*sy)/2)/Math.tan(camera.fov*Math.PI/360); VIEWPORT.tx=(fw/2)/fpx; VIEWPORT.ty=(fh/2)/fpx; }
 addEventListener('resize',resize); resize();
+/* ---- 3D: red/cyan anaglyph (kiosk 3D button) ----
+   Each eye is drawn from a camera moved e/2 left or right along the view's horizontal axis, with an off-axis
+   (sheared) projection so that the orbit target lies in the screen plane: points there have zero parallax,
+   nearer points come out of the screen and farther ones sit behind it. The two images are combined with the
+   Dubois (2001) least-squares red/cyan matrices, applied in linear light after tone mapping, then sRGB-encoded.
+   Depth is "gentle", set for the person at the screen (~0.5 m): the eye separation is chosen each frame so the
+   model's on-screen parallax stays within STEREO_PAR of the canvas width either side of the screen (0.6 % =
+   ~7 mm on a 55" panel, about 0.8 degrees at 0.5 m, inside the ~1 degree comfort zone). &depth=0.6 overrides (in %). */
+const STEREO_PAR = (parseFloat(QS.get('depth'))||0.6)/100;
+const DUBOIS_L = new THREE.Matrix3().fromArray([0.456100,-0.0400822,-0.0152161, 0.500484,-0.0378246,-0.0205971, 0.176381,-0.0157589,-0.00546856]);
+const DUBOIS_R = new THREE.Matrix3().fromArray([-0.0434706,0.378476,-0.0721527, -0.0879388,0.73364,-0.112961, -0.00155529,-0.0184503,1.2264]);
+const eyeCam=[new THREE.PerspectiveCamera(), new THREE.PerspectiveCamera()]; eyeCam.forEach(c=>c.matrixAutoUpdate=false);
+let eyeRT=null;                                   // two multisampled half-float targets (linear light), made on first use
+const anaQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2), new THREE.ShaderMaterial({
+  uniforms:{tL:{value:null}, tR:{value:null}, mL:{value:DUBOIS_L}, mR:{value:DUBOIS_R}},
+  vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
+  // toneMapping() and linearToOutputTexel() come from the renderer (ACES filmic, sRGB output), as for the 2D view
+  fragmentShader:`uniform sampler2D tL, tR; uniform mat3 mL, mR; varying vec2 vUv;
+    void main(){ vec4 a=texture2D(tL,vUv), b=texture2D(tR,vUv);
+      vec3 cL=toneMapping(a.rgb), cR=toneMapping(b.rgb);
+      vec3 c=clamp(mL*cL + mR*cR, 0., 1.);
+      gl_FragColor=linearToOutputTexel(vec4(c, max(a.a,b.a))); }`,
+  depthTest:false, depthWrite:false, toneMapped:true }));
+anaQuad.frustumCulled=false;
+const anaScene=new THREE.Scene(); anaScene.add(anaQuad); const anaCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+const _v=new THREE.Vector3(), _sz=new THREE.Vector2(), _shift=new THREE.Matrix4();
+// eye separation (model mm) for the current view: keep the model's parallax within +-STEREO_PAR of the canvas width
+function eyeSep(F){
+  const P0=camera.projectionMatrix.elements[0];   // NDC x per unit (x / distance)
+  camera.updateMatrixWorld(); let zn=Infinity, zf=0;
+  const top=(S?S.maxH:0)*PLATE;
+  for(const x of [0,W]) for(const y of [0,top]) for(const z of [0,Dp]){
+    const d=-_v.set(x,y,z).applyMatrix4(camera.matrixWorldInverse).z; zn=Math.min(zn,d); zf=Math.max(zf,d); }
+  zn=Math.max(zn, 0.5*F);                          // parts of the model nearer than F/2 (under the camera when zoomed in) are let go
+  // canvas-width fraction of parallax at distance z: (P0 e / 2) |1/z - 1/F|
+  const k=Math.max(1/zn-1/F, 1/F-1/Math.max(zf,F), 1e-9);
+  return Math.min(2*STEREO_PAR/(P0*k), F/10);      // and never more than F/10 (very flat views)
+}
+function renderAnaglyph(){
+  renderer.getDrawingBufferSize(_sz);
+  if(!eyeRT || eyeRT[0].width!==_sz.x || eyeRT[0].height!==_sz.y){
+    if(eyeRT) eyeRT.forEach(t=>t.dispose());
+    eyeRT=[0,1].map(()=>new THREE.WebGLRenderTarget(_sz.x,_sz.y,{type:THREE.HalfFloatType, samples:4})); }
+  const F=camera.position.distanceTo(controls.target), e=eyeSep(F);
+  [-e/2, e/2].forEach((s,k)=>{
+    const c=eyeCam[k];
+    // eye position: shift along the camera's own x axis
+    c.matrix.copy(camera.matrixWorld).multiply(_shift.makeTranslation(s,0,0)); c.matrixWorld.copy(c.matrix); c.matrixWorldInverse.copy(c.matrix).invert();
+    // off-axis projection: same frustum (including the panel view-offset), sheared so parallax is zero at distance F
+    c.projectionMatrix.copy(camera.projectionMatrix); c.projectionMatrix.elements[8] -= camera.projectionMatrix.elements[0]*s/F;
+    c.projectionMatrixInverse.copy(c.projectionMatrix).invert(); c.near=camera.near; c.far=camera.far;
+    renderer.setRenderTarget(eyeRT[k]); renderer.render(scene,c);
+  });
+  renderer.setRenderTarget(null);
+  anaQuad.material.uniforms.tL.value=eyeRT[0].texture; anaQuad.material.uniforms.tR.value=eyeRT[1].texture;
+  renderer.render(anaScene,anaCam);
+}
+
 const needle=document.getElementById('needle');
 function loop(now){
   if(tween){ const u=Math.min(1,(now-tween.t0)/tween.dur), e=u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2;
@@ -1343,11 +1404,11 @@ function loop(now){
   if(DROP){ dropTick(now); moving=true; }
   if(controls.update()) moving=true;            // true while the camera moves, including damping
   if(moving || dirty){                          // otherwise nothing changed: skip the frame
-    dirty=false; applyLOD(); renderer.render(scene,camera); if(S) updateLabels();
+    dirty=false; applyLOD(); if(state.stereo) renderAnaglyph(); else renderer.render(scene,camera); if(S) updateLabels();
     const az=Math.atan2(camera.position.x-controls.target.x, camera.position.z-controls.target.z);
     needle.style.transform=`rotate(${az*180/Math.PI}deg)`; }
   requestAnimationFrame(loop); }
-if(new URLSearchParams(location.search).has('debug')) window.__tb={camera, controls, applyLOD, get tiles(){ return S&&S.tiles&&S.tiles.map(t=>t.near); }, get frames(){ return renderer.info.render.frame; }, time:()=>{ const t=performance.now(); rebuild(); return Math.round(performance.now()-t); }, state, pick:(x,y)=>pickCell({clientX:x,clientY:y}), release:releaseDrop, get S(){return S;}, get NX(){return NX;}};
+if(new URLSearchParams(location.search).has('debug')) window.__tb={eyeCam, eyeSep, renderAnaglyph, get W(){return W;}, get Dp(){return Dp;}, camera, controls, applyLOD, get tiles(){ return S&&S.tiles&&S.tiles.map(t=>t.near); }, get frames(){ return renderer.info.render.frame; }, time:()=>{ const t=performance.now(); rebuild(); return Math.round(performance.now()-t); }, state, pick:(x,y)=>pickCell({clientX:x,clientY:y}), release:releaseDrop, get S(){return S;}, get NX(){return NX;}};
 async function availability(){
   if(Object.keys(DATA).length){ AVAIL=new Set(Object.keys(DATA)); }
   else { try{ const idx=await fetchJSON('data/index.json'); AVAIL=new Set(Object.keys(idx)); }catch(e){ AVAIL=new Set(SCENES.map(s=>s.id)); } }

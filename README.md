@@ -127,3 +127,13 @@ Windows set-up (Chrome):
 - Turn off edge swipes (Settings › Bluetooth & devices › Touch › three- and four-finger gestures; Group Policy "Allow edge swipe" = Disabled).
 - Turn off sleep and the screen saver.
 - Quit with Alt+F4 from a keyboard.
+
+### 3D (red/cyan anaglyph) in kiosk mode
+
+Kiosk mode adds a **3D (red/cyan glasses)** toggle; wear the red lens on the left eye.
+- **Viewpoints:** each eye is drawn from a camera moved half the eye separation left or right. The projection is off-axis, so the orbit target sits in the screen plane: nearer terrain comes out of the screen and farther terrain sits behind it.
+- **Colour:** the two images are combined with the Dubois (2001) least-squares red/cyan matrices, applied in linear light after tone mapping. Colours shift, most visibly water, which turns purple; this is inherent to anaglyph.
+- **Depth is gentle**, set for the person at the screen. The eye separation is chosen each frame so the model's parallax stays within 0.6 % of the canvas width either side of the screen. On a 55" panel that is about 7 mm, or 0.8° at 0.5 m, inside the ~1° comfort zone. To change it, use `&depth=0.6` (per cent of width).
+- **No labels:** map labels are hidden in 3D, because 2D labels would sit at screen depth. The tap card and its pin still work.
+- **Idle reset:** an idle reset returns to 2D.
+- **Cost:** 3D draws the scene twice. If frames drop on the kiosk PC, use a coarser resolution.
