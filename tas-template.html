@@ -115,6 +115,38 @@ td.id{font-family:var(--mono);color:var(--ink2)}
 @media (max-width:720px){ .info{left:16px!important;right:16px;top:auto!important;bottom:calc(12px + env(safe-area-inset-bottom,0px));width:auto} }
 .head .sub{font-family:var(--display);font-weight:500;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-top:2px}
 </style>
+<style>
+/* Kiosk mode (?kiosk): a large touch screen at an open day. --kz enlarges the on-screen controls so they are the
+   same fraction of the screen whatever the display scaling; the page itself cannot be zoomed, scrolled or selected. */
+.attract{display:none}
+html.kiosk{--kz:1}
+html.kiosk body{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
+html.kiosk .panel{zoom:var(--kz);max-height:calc((100vh - 32px)/var(--kz));touch-action:pan-y;overscroll-behavior:contain}
+html.kiosk .head,html.kiosk .compass,html.kiosk .hint,html.kiosk .info,html.kiosk #busy{zoom:var(--kz)}
+html.kiosk .info{touch-action:pan-y}
+html.kiosk .head .logo{pointer-events:none}
+html.kiosk #partsBtn,html.kiosk #stats{display:none}
+/* finger-sized targets */
+html.kiosk .seg button{padding:10px 6px;font-size:13.5px}
+html.kiosk .tog{padding:9px 12px 9px 9px;font-size:13.5px}
+html.kiosk .scenes button{padding:9px 10px}
+html.kiosk .slr .marks button{padding:6px 9px;font-size:12px}
+html.kiosk input[type=range]{height:30px}
+html.kiosk .info .x{font-size:26px;padding:4px 8px}
+/* map labels are positioned in screen pixels, so they are enlarged by font size rather than zoom */
+html.kiosk .lm .t{font-size:calc(14px*var(--kz))}
+html.kiosk .lm .e{font-size:calc(10.5px*var(--kz))}
+html.kiosk .lm .stem{height:calc(18px*var(--kz))}
+/* "Touch to explore" prompt while the exhibit is idle */
+html.kiosk .attract{display:flex;position:fixed;left:50%;bottom:calc(28px*var(--kz));transform:translateX(-50%);zoom:var(--kz);pointer-events:none;
+  flex-direction:column;align-items:center;gap:2px;padding:12px 26px;border-radius:999px;background:var(--panel);border:1px solid var(--line);
+  box-shadow:0 10px 30px rgba(0,0,0,.18);animation:pulse 2.4s ease-in-out infinite}
+html.kiosk .attract[hidden]{display:none}
+.attract b{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:.06em;text-transform:uppercase}
+.attract span{font-size:13px;color:var(--ink2)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.62}}
+@media (prefers-reduced-motion: reduce){.attract{animation:none}}
+</style>
 
 <div id="stage"></div>
 <div id="labels"></div>
@@ -130,7 +162,8 @@ td.id{font-family:var(--mono);color:var(--ink2)}
 </div>
 
 <div class="compass" aria-label="North arrow"><svg viewBox="-20 -20 40 40" id="needle"><polygon points="0,-15 5,3 0,0 -5,3" fill="#C0392B"/><polygon points="0,15 5,3 0,0 -5,3" fill="currentColor" opacity=".45"/></svg></div>
-<div class="hint">Drag to orbit · scroll or pinch to zoom · right-drag to pan</div>
+<div class="hint" id="hint">Drag to orbit · scroll or pinch to zoom · right-drag to pan</div>
+<div class="attract" id="attract" hidden><b>Touch to explore</b><span>Turn, zoom and tap the bricks</span></div>
 
 <aside class="panel" id="panel">
   <button class="btn toggle" id="collapse" aria-expanded="true">Hide controls</button>
@@ -572,10 +605,30 @@ function build(o){
   return {H,maxH,parts,studsTop,canopy,mPerPlate,SHELL,hiddenEst:Math.round(hiddenPlates/24),WET,IP,ISKIN,FC,slr,snowTop};
 }
 
+/* ================= KIOSK SETTINGS (?kiosk) ================= */
+// Kiosk mode is for an unattended large touch screen. All options are URL parameters:
+//   ?kiosk          kiosk mode, controls scaled to the screen width;  ?kiosk=1.6  fixed control scale
+//   &idle=90        seconds without a touch before the exhibit resets to the home scene and starts the attract loop
+//   &tour=60        seconds per scene in the attract loop (0 = stay on the home scene, slowly turning)
+//   &home=cradle    scene to reset to;   &scenes=cradle,tasmania,hobart   scenes visited by the attract loop
+//   &dpr=1          render resolution cap (device pixels per CSS pixel); 1 keeps a 4K screen fast
+const QS = new URLSearchParams(location.search);
+const KIOSK = QS.has('kiosk');
+const KIOSK_Z = parseFloat(QS.get('kiosk')) || 0;          // 0 = scale controls to the screen
+const KIOSK_DPR = parseFloat(QS.get('dpr')) || 1;
+let KZ = 1;                                                // current control scale (CSS zoom of the panel etc.)
+// Controls are designed for a ~1600 px wide browser window; scale them with the window so they keep the same
+// share of the screen whether the PC runs the TV at 100 %, 200 % or 300 % display scaling.
+function kioskScale(){ KZ = KIOSK_Z || Math.min(2.5, Math.max(1, innerWidth/1600)); document.documentElement.style.setProperty('--kz', KZ); }
+if(KIOSK){ document.documentElement.classList.add('kiosk'); kioskScale();
+  document.getElementById('hint').textContent='One finger to turn · pinch to zoom · two fingers to move · tap a brick'; }
+// a tap is a short touch that hardly moves; fingers on a big screen wobble more than a mouse
+const TAP_PX = KIOSK ? 16 : 6, TAP_MS = KIOSK ? 800 : 600;
+
 /* ================= RENDERER ================= */
 const stage=document.getElementById('stage');
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, KIOSK ? KIOSK_DPR : 2));
 renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
 renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 // Performance: the sun is fixed relative to the model, so the shadow map is redrawn only when the model changes,
@@ -1114,8 +1167,9 @@ async function showInfo(ev){
   $('infoBody').innerHTML=`<h3>${where}</h3><div class="sub">${CELL} m block · ${sliced&&top?'cut face':top?'top':'side wall'}</div>${brickHTML}<dl>${dl(rows)}</dl>`+
     (more.length?`<details><summary>More</summary><dl>${dl(more)}</dl></details>`:'');
   // place the card beside the tap (bottom sheet on phones, via CSS) and drop a pin on the brick
-  const box=$('info'); box.hidden=false; const bw=box.offsetWidth, bh=box.offsetHeight;
-  box.style.left=Math.max(16,Math.min(innerWidth-bw-16, ev.clientX+16))+'px'; box.style.top=Math.max(16,Math.min(innerHeight-bh-16, ev.clientY-bh/2))+'px';
+  // (sizes are measured on screen; in kiosk mode the card is zoomed by KZ, which also scales its left/top, so divide)
+  const box=$('info'); box.hidden=false; const bb=box.getBoundingClientRect(), bw=bb.width, bh=bb.height, z=KIOSK?KZ:1;
+  box.style.left=Math.max(16,Math.min(innerWidth-bw-16, ev.clientX+16))/z+'px'; box.style.top=Math.max(16,Math.min(innerHeight-bh-16, ev.clientY-bh/2))/z+'px';
   if(S.pin) model.remove(S.pin);
   const ph=Math.max(3*PITCH, 0.02*Math.max(W,Dp)), pin=new THREE.Group();
   const cone=new THREE.Mesh(new THREE.ConeGeometry(ph*0.18,ph*0.7,16),pinMat); cone.rotation.x=Math.PI; cone.position.y=ph*0.35;
@@ -1153,7 +1207,7 @@ $('dropClear').addEventListener('click',()=>{ clearDrops(); modeReadout(); });
 { let down=null; const cv=renderer.domElement;
   cv.addEventListener('pointerdown',e=>{ down={x:e.clientX,y:e.clientY,t:performance.now()}; });
   cv.addEventListener('pointerup',e=>{ if(!down||!S) return; const d=down; down=null;
-    if(Math.hypot(e.clientX-d.x,e.clientY-d.y)>6 || performance.now()-d.t>600) return;   // a drag turns the view; only a quick tap counts
+    if(Math.hypot(e.clientX-d.x,e.clientY-d.y)>TAP_PX || performance.now()-d.t>TAP_MS) return;   // a drag turns the view; only a quick tap counts
     if(state.mode!=='water'){ showInfo(e); return; }
     if(!S.route) return;
     if(+$('step').value<stepMax){ waterSay('Finish the build (build-step slider) to release drops.'); return; }
@@ -1167,7 +1221,9 @@ document.getElementById('res').addEventListener('click',e=>{const b=e.target.clo
     const k=Math.max(W,Dp)/S0; tween=null; camera.position.copy(cp.multiplyScalar(k)); controls.target.copy(ct.multiplyScalar(k)); controls.update(); });});
 document.getElementById('views').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; pressGroup(e.currentTarget,b); state.view=b.dataset.v; setView(state.view);});
 const busy=document.getElementById('busy');
-function heavy(fn){ busy.hidden=false; setTimeout(async()=>{ await fn(); busy.hidden=true; requestRender(true); },30); }
+// run a slow job behind the "Sorting bricks" notice; a failed job (e.g. scene data unreachable) is logged and the
+// notice still clears, so the page (and the kiosk tour) carries on
+function heavy(fn){ busy.hidden=false; setTimeout(async()=>{ try{ await fn(); }catch(e){ console.error(e); } finally{ busy.hidden=true; requestRender(true); } },30); }
 // any control in the panel may change what is drawn
 ['click','input'].forEach(ev=>document.getElementById('panel').addEventListener(ev,()=>requestRender()));
 function veButtons(){ const opts=SC.veOpts||[1,2,3,4,5]; if(!opts.includes(state.ve)) state.ve=opts[Math.min(2,opts.length-1)];
@@ -1223,9 +1279,51 @@ async function openScene(id){
   try{ history.replaceState(null,'','#'+id); }catch(e){}
 }
 
+/* ---- Kiosk behaviour: reset when idle, an attract loop, and no way to wander off the exhibit ---- */
+const IDLE_MS = 1000*(+(QS.get('idle')??90) || 90);
+const TOUR_MS = 1000*(+(QS.get('tour')??60));
+const HOME = SCENES.some(s=>s.id===QS.get('home')) ? QS.get('home') : 'cradle';
+let lastInput = performance.now(), attract = false, tourTimer = null, tourAt = 0;
+// back to the opening state: home (or the given) scene at its own resolution and exaggeration, default layers, no card
+function kioskReset(id){
+  hideInfo(); if(dlg.open) dlg.close(); tween=null;
+  Object.assign(state,{snow:true,labels:true,trees:true,bldg:true,geo:false,lgm:false,fire:false,mode:'land',slr:0,view:'hero'});
+  for(const [el,k] of [['snow','snow'],['labelsT','labels'],['trees','trees'],['bldgT','bldg']]) setTog(el,k,state[k]);
+  panel.scrollTop=0;
+  state.scene=id; state.loaded=false;                       // loaded=false: open at the scene's own default resolution
+  pressGroup(scenesEl, scenesEl.querySelector(`[data-s="${id}"]`));
+  heavy(()=>openScene(id));
+}
+// attract loop: the model turns slowly under a "Touch to explore" prompt, visiting the tour scenes in turn
+function tourList(){ return (QS.get('scenes')||'cradle,tasmania,hobart')
+  .split(',').filter(id=>AVAIL.has(id)); }
+function startAttract(reset){
+  attract=true; $('attract').hidden=false;
+  if(reset) kioskReset(HOME);
+  controls.autoRotate=true; controls.autoRotateSpeed=0.5;   // one turn in about two minutes
+  clearInterval(tourTimer); tourAt=Math.max(0, tourList().indexOf(HOME));
+  if(TOUR_MS>0) tourTimer=setInterval(()=>{ const L=tourList(); if(!attract || L.length<2 || !busy.hidden) return;
+    tourAt=(tourAt+1)%L.length; kioskReset(L[tourAt]); }, TOUR_MS);
+}
+function stopAttract(){ attract=false; $('attract').hidden=true; controls.autoRotate=false; clearInterval(tourTimer); tourTimer=null; requestRender(); }
+if(KIOSK){
+  // any touch, click, key or wheel wakes the exhibit (the same touch also acts, so the first tap is not lost)
+  for(const ev of ['pointerdown','keydown','wheel']) addEventListener(ev,()=>{ lastInput=performance.now(); if(attract) stopAttract(); },{capture:true,passive:true});
+  setInterval(()=>{ if(!attract && busy.hidden && performance.now()-lastInput>IDLE_MS) startAttract(true); }, 1000);
+  // no long-press menu, no browser zoom (ctrl+wheel, touchpad pinch, Safari gestures), no dragging of images or text
+  addEventListener('contextmenu',e=>e.preventDefault());
+  addEventListener('wheel',e=>{ if(e.ctrlKey) e.preventDefault(); },{passive:false});
+  addEventListener('gesturestart',e=>e.preventDefault());
+  addEventListener('dragstart',e=>e.preventDefault());
+  // keep the orbit centre over the model, so the model cannot be panned off screen and lost
+  controls.addEventListener('change',()=>{ if(!S) return; const t=controls.target, top=S.maxH*PLATE;
+    const cx=Math.min(W,Math.max(0,t.x)), cy=Math.min(top,Math.max(0,t.y)), cz=Math.min(Dp,Math.max(0,t.z));
+    if(cx!==t.x||cy!==t.y||cz!==t.z){ camera.position.x+=cx-t.x; camera.position.y+=cy-t.y; camera.position.z+=cz-t.z; t.set(cx,cy,cz); } });
+}
+
 // Shift the projection centre to the middle of the area not covered by the control panel.
 const VIEWPORT={tx:1,ty:1};
-function resize(){ requestRender(); const w=innerWidth,h=innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.fov = w<720?44:32;
+function resize(){ requestRender(); if(KIOSK) kioskScale(); const w=innerWidth,h=innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.fov = w<720?44:32;
   const pr=panel.classList.contains('collapsed')?null:panel.getBoundingClientRect(); let fw=w, fh=h;
   if(pr && pr.width>0){ if(pr.left>w/2) fw=Math.max(w*0.4, pr.left-8); else if(pr.top>h/2) fh=Math.max(h*0.4, pr.top-8); }
   const sx=(w-fw)/2, sy=(h-fh)/2;
@@ -1251,5 +1349,6 @@ async function availability(){
   else { try{ const idx=await fetchJSON('data/index.json'); AVAIL=new Set(Object.keys(idx)); }catch(e){ AVAIL=new Set(SCENES.map(s=>s.id)); } }
   scenesEl.querySelectorAll('button').forEach(b=>b.hidden=!AVAIL.has(b.dataset.s)); }
 const start = (location.hash||'').slice(1); if(SCENES.some(s=>s.id===start) && start!=='cradle'){ state.scene=start; state.tier=0; pressGroup(scenesEl, scenesEl.querySelector(`[data-s="${start}"]`)); }
-availability().then(()=>openScene(state.scene)).then(()=>{ busy.hidden=true; requestAnimationFrame(loop); }).catch(e=>{ busy.hidden=false; busy.textContent='Could not load scene data ('+e.message+')'; console.error(e); });
+if(KIOSK){ state.scene=HOME; pressGroup(scenesEl, scenesEl.querySelector(`[data-s="${HOME}"]`)); }
+availability().then(()=>openScene(state.scene)).then(()=>{ busy.hidden=true; requestAnimationFrame(loop); if(KIOSK) startAttract(false); }).catch(e=>{ busy.hidden=false; busy.textContent='Could not load scene data ('+e.message+')'; console.error(e); });
 </script>

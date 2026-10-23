@@ -103,3 +103,27 @@ surface class, rock at the surface or at the tapped depth (walls and build-step 
 modelled ice-age ice thickness or sea-floor depth, and under "More" the unit description, the LEGO part, and the
 position (lat/long from MGA55 by the Krüger series, checked against PROJ to 1e-8 degrees). In Water drop mode a tap
 releases a drop instead.
+
+## Kiosk mode (open-day touch screen)
+
+Open `https://tas-bricks.geodesy1.cloud.edu.au/?kiosk` on the PC that drives the touch screen. Nothing changes for normal visitors to the site.
+
+- **Controls scale with the screen** (CSS zoom = window width / 1600 px, between 1 and 2.5), with finger-sized buttons and a touch hint. Map labels grow to match. The parts list and the statistics are hidden. The logo link is inactive.
+- **The page is locked down.** There is no long-press menu, no text selection, no browser zoom by pinch or ctrl+wheel, and no image dragging. The orbit centre stays over the model, so it cannot be panned away and lost. A tap may move up to 16 px within 0.8 s, because fingers wobble more than a mouse.
+- **Idle reset and attract loop.** After `idle` seconds without a touch, any info card closes and the layers return to their defaults. The model then turns slowly under a "Touch to explore" prompt, moving to the next tour scene every `tour` seconds. The first touch stops the loop and still acts.
+- **Render resolution is capped** at `dpr` device pixels per CSS pixel, so a 4K panel is drawn at the window's CSS size.
+
+URL options (all optional): `?kiosk` or `?kiosk=1.6` (fixed control scale), `&idle=90`, `&tour=60` (0 = stay on the home scene, turning), `&home=cradle`, `&scenes=cradle,tasmania,hobart`, `&dpr=1`.
+
+Windows set-up (Chrome):
+
+```
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk "https://tas-bricks.geodesy1.cloud.edu.au/?kiosk" ^
+  --disable-pinch --overscroll-history-navigation=0 --no-first-run --noerrdialogs ^
+  --disable-session-crashed-bubble --disable-features=TranslateUI --user-data-dir=C:\tas-kiosk
+```
+
+- Set Windows display scaling to 200 % on a 4K panel. With `dpr=1`, the model is then drawn at 1920 × 1080, which suits integrated graphics.
+- Turn off edge swipes (Settings › Bluetooth & devices › Touch › three- and four-finger gestures; Group Policy "Allow edge swipe" = Disabled).
+- Turn off sleep and the screen saver.
+- Quit with Alt+F4 from a keyboard.
