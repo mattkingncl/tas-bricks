@@ -106,6 +106,8 @@ releases a drop instead.
 
 ## Kiosk mode (open-day touch screen)
 
+**Step-by-step guide for whoever runs the exhibit: [KIOSK.md](KIOSK.md).** The notes below are a technical summary.
+
 Open `https://tas-bricks.geodesy1.cloud.edu.au/?kiosk` on the PC that drives the touch screen. Nothing changes for normal visitors to the site.
 
 - **Controls scale with the screen** (CSS zoom = window width / 1600 px, between 1 and 2.5), with finger-sized buttons and a touch hint. Map labels grow to match. The parts list and the statistics are hidden. The logo link is inactive.
